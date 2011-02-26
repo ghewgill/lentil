@@ -43,8 +43,8 @@ var op_dconst_1         = 15;
 var op_bipush           = 16;
 var op_sipush           = 17;
 var op_ldc              = 18;
-var op_ldc2             = 19;
-var op_ldc2w            = 20;
+var op_ldc_w            = 19;
+var op_ldc2_w           = 20;
 var op_iload            = 21;
 var op_lload            = 22;
 var op_fload            = 23;
@@ -169,9 +169,9 @@ var op_f2d              = 141;
 var op_d2i              = 142;
 var op_d2l              = 143;
 var op_d2f              = 144;
-var op_int2byte         = 145;
-var op_int2char         = 146;
-var op_int2short        = 147;
+var op_i2b              = 145;
+var op_i2c              = 146;
+var op_i2s              = 147;
 var op_lcmp             = 148;
 var op_fcmpl            = 149;
 var op_fcmpg            = 150;
@@ -232,7 +232,7 @@ Instruction = [
     "op_nop", "op_aconst_null", "op_iconst_m1", "op_iconst_0", "op_iconst_1",
     "op_iconst_2", "op_iconst_3", "op_iconst_4", "op_iconst_5", "op_lconst_0",
     "op_lconst_1", "op_fconst_0", "op_fconst_1", "op_fconst_2", "op_dconst_0",
-    "op_dconst_1", "op_bipush", "op_sipush", "op_ldc", "op_ldc2", "op_ldc2w",
+    "op_dconst_1", "op_bipush", "op_sipush", "op_ldc", "op_ldc_w", "op_ldc2_w",
     "op_iload", "op_lload", "op_fload", "op_dload", "op_aload", "op_iload_0",
     "op_iload_1", "op_iload_2", "op_iload_3", "op_lload_0", "op_lload_1",
     "op_lload_2", "op_lload_3", "op_fload_0", "op_fload_1", "op_fload_2",
@@ -254,7 +254,7 @@ Instruction = [
     "op_iushr", "op_lushr", "op_iand", "op_land", "op_ior", "op_lor", "op_ixor",
     "op_lxor", "op_iinc", "op_i2l", "op_i2f", "op_i2d", "op_l2i", "op_l2f",
     "op_l2d", "op_f2i", "op_f2l", "op_f2d", "op_d2i", "op_d2l", "op_d2f",
-    "op_int2byte", "op_int2char", "op_int2short", "op_lcmp", "op_fcmpl",
+    "op_i2b", "op_i2c", "op_i2s", "op_lcmp", "op_fcmpl",
     "op_fcmpg", "op_dcmpl", "op_dcmpg", "op_ifeq", "op_ifne", "op_iflt", "op_ifge",
     "op_ifgt", "op_ifle", "op_if_icmpeq", "op_if_icmpne", "op_if_icmplt",
     "op_if_icmpge", "op_if_icmpgt", "op_if_icmple", "op_if_acmpeq", "op_if_acmpne",
@@ -445,8 +445,8 @@ function decodeBytecode(code) {
                 ins = [op_ldc, code[i+1]];
                 i += 1;
                 break;
-            //case op_ldc2:
-            //case op_ldc2w:
+            //case op_ldc_w:
+            //case op_ldc2_w:
             //case op_iload:
             //case op_lload:
             //case op_fload:
@@ -575,9 +575,9 @@ function decodeBytecode(code) {
             //case op_d2i:
             //case op_d2l:
             //case op_d2f:
-            //case op_int2byte:
-            //case op_int2char:
-            //case op_int2short:
+            //case op_i2b:
+            //case op_i2c:
+            //case op_i2s:
             //case op_lcmp:
             //case op_fcmpl:
             //case op_fcmpg:
@@ -874,11 +874,11 @@ Opcode = [
         return pc + 1;
     },
     
-    // op_ldc2
+    // op_ldc_w
     function(cls, env, ins, pc) {
     },
     
-    // op_ldc2w
+    // op_ldc2_w
     function(cls, env, ins, pc) {
     },
     
@@ -1378,15 +1378,15 @@ Opcode = [
     function(cls, env, ins, pc) {
     },
     
-    // op_int2byte
+    // op_i2b
     function(cls, env, ins, pc) {
     },
     
-    // op_int2char
+    // op_i2c
     function(cls, env, ins, pc) {
     },
     
-    // op_int2short
+    // op_i2s
     function(cls, env, ins, pc) {
     },
     
