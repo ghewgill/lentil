@@ -356,6 +356,36 @@ function ConstantFieldref(cls, din) {
     }
 }
 
+function ConstantInteger(cls, din) {
+    this.cls = cls;
+    this.bytes = din.readUnsignedInt();
+
+    this.resolve = function() { }
+
+    this.toString = function() {
+        return this.bytes;
+    }
+
+    this.value = function() {
+        return this.bytes;
+    }
+}
+
+function ConstantInterfaceMethodref(cls, din) {
+    this.cls = cls;
+    this.class_index = din.readUnsignedShort();
+    this.name_and_type_index = din.readUnsignedShort();
+
+    this.resolve = function() {
+        this.classref = this.cls.constant_pool[this.class_index];
+        this.name_and_type = this.cls.constant_pool[this.name_and_type_index];
+    }
+
+    this.toString = function() {
+        return "<interfacemethodref " + this.classref + " " + this.name_and_type + ">";
+    }
+}
+
 function ConstantMethodref(cls, din) {
     this.cls = cls;
     this.class_index = din.readUnsignedShort();
@@ -423,190 +453,567 @@ function decodeBytecode(code) {
     for (var i = 0; i < code.length; i++) {
         var ins;
         switch (code[i]) {
-            //case op_nop:
-            //case op_aconst_null:
-            //case op_iconst_m1:
-            //case op_iconst_0:
-            //case op_iconst_1:
-            //case op_iconst_2:
-            //case op_iconst_3:
-            //case op_iconst_4:
-            //case op_iconst_5:
-            //case op_lconst_0:
-            //case op_lconst_1:
-            //case op_fconst_0:
-            //case op_fconst_1:
-            //case op_fconst_2:
-            //case op_dconst_0:
-            //case op_dconst_1:
-            //case op_bipush:
-            //case op_sipush:
+            case op_nop:
+                ins = [op_nop];
+                break;
+            case op_aconst_null:
+                ins = [op_aconst_null];
+                break;
+            case op_iconst_m1:
+                ins = [op_iconst_m1];
+                break;
+            case op_iconst_0:
+                ins = [op_iconst_0];
+                break;
+            case op_iconst_1:
+                ins = [op_iconst_1];
+                break;
+            case op_iconst_2:
+                ins = [op_iconst_2];
+                break;
+            case op_iconst_3:
+                ins = [op_iconst_3];
+                break;
+            case op_iconst_4:
+                ins = [op_iconst_4];
+                break;
+            case op_iconst_5:
+                ins = [op_iconst_5];
+                break;
+            case op_lconst_0:
+                ins = [op_lconst_0];
+                break;
+            case op_lconst_1:
+                ins = [op_lconst_1];
+                break;
+            case op_fconst_0:
+                ins = [op_fconst_0];
+                break;
+            case op_fconst_1:
+                ins = [op_fconst_1];
+                break;
+            case op_fconst_2:
+                ins = [op_fconst_2];
+                break;
+            case op_dconst_0:
+                ins = [op_dconst_0];
+                break;
+            case op_dconst_1:
+                ins = [op_dconst_1];
+                break;
+            case op_bipush:
+                ins = [op_bipush, code[i+1]];
+                i += 1;
+                break;
+            case op_sipush:
+                ins = [op_sipush, (code[i+1] << 8) | code[i+2]];
+                i += 2;
+                break;
             case op_ldc:
                 ins = [op_ldc, code[i+1]];
                 i += 1;
                 break;
             //case op_ldc_w:
             //case op_ldc2_w:
-            //case op_iload:
-            //case op_lload:
-            //case op_fload:
-            //case op_dload:
-            //case op_aload:
-            //case op_iload_0:
-            //case op_iload_1:
-            //case op_iload_2:
-            //case op_iload_3:
-            //case op_lload_0:
-            //case op_lload_1:
-            //case op_lload_2:
-            //case op_lload_3:
-            //case op_fload_0:
-            //case op_fload_1:
-            //case op_fload_2:
-            //case op_fload_3:
-            //case op_dload_0:
-            //case op_dload_1:
-            //case op_dload_2:
-            //case op_dload_3:
+            case op_iload:
+                ins = [op_iload, code[i+1]];
+                i += 1;
+                break;
+            case op_lload:
+                ins = [op_lload, code[i+1]];
+                i += 1;
+                break;
+            case op_fload:
+                ins = [op_fload, code[i+1]];
+                i += 1;
+                break;
+            case op_dload:
+                ins = [op_dload, code[i+1]];
+                i += 1;
+                break;
+            case op_aload:
+                ins = [op_aload, code[i+1]];
+                i += 1;
+                break;
+            case op_iload_0:
+                ins = [op_iload, 0];
+                break;
+            case op_iload_1:
+                ins = [op_iload, 1];
+                break;
+            case op_iload_2:
+                ins = [op_iload, 2];
+                break;
+            case op_iload_3:
+                ins = [op_iload, 3];
+                break;
+            case op_lload_0:
+                ins = [op_lload, 0];
+                break;
+            case op_lload_1:
+                ins = [op_lload, 1];
+                break;
+            case op_lload_2:
+                ins = [op_lload, 2];
+                break;
+            case op_lload_3:
+                ins = [op_lload, 3];
+                break;
+            case op_fload_0:
+                ins = [op_aload, 0];
+                break;
+            case op_fload_1:
+                ins = [op_aload, 1];
+                break;
+            case op_fload_2:
+                ins = [op_aload, 2];
+                break;
+            case op_fload_3:
+                ins = [op_aload, 3];
+                break;
+            case op_dload_0:
+                ins = [op_dload, 0];
+                break;
+            case op_dload_1:
+                ins = [op_dload, 1];
+                break;
+            case op_dload_2:
+                ins = [op_dload, 2];
+                break;
+            case op_dload_3:
+                ins = [op_dload, 3];
+                break;
             case op_aload_0:
                 ins = [op_aload, 0];
                 break;
-            //case op_aload_1:
-            //case op_aload_2:
-            //case op_aload_3:
-            //case op_iaload:
-            //case op_laload:
-            //case op_faload:
-            //case op_daload:
+            case op_aload_1:
+                ins = [op_aload, 1];
+                break;
+            case op_aload_2:
+                ins = [op_aload, 2];
+                break;
+            case op_aload_3:
+                ins = [op_aload, 3];
+                break;
+            case op_iaload:
+                ins = [op_iaload];
+                break;
+            case op_laload:
+                ins = [op_laload];
+                break;
+            case op_faload:
+                ins = [op_faload];
+                break;
+            case op_daload:
+                ins = [op_daload];
+                break;
             case op_aaload:
                 ins = [op_aaload];
                 break;
-            //case op_baload:
-            //case op_caload:
-            //case op_saload:
-            //case op_istore:
-            //case op_lstore:
-            //case op_fstore:
-            //case op_dstore:
-            //case op_astore:
-            //case op_istore_0:
-            //case op_istore_1:
-            //case op_istore_2:
-            //case op_istore_3:
-            //case op_lstore_0:
-            //case op_lstore_1:
-            //case op_lstore_2:
-            //case op_lstore_3:
-            //case op_fstore_0:
-            //case op_fstore_1:
-            //case op_fstore_2:
-            //case op_fstore_3:
-            //case op_dstore_0:
-            //case op_dstore_1:
-            //case op_dstore_2:
-            //case op_dstore_3:
-            //case op_astore_0:
-            //case op_astore_1:
-            //case op_astore_2:
-            //case op_astore_3:
-            //case op_iastore:
-            //case op_lastore:
-            //case op_fastore:
-            //case op_dastore:
-            //case op_aastore:
-            //case op_bastore:
-            //case op_castore:
-            //case op_sastore:
-            //case op_pop:
-            //case op_pop2:
-            //case op_dup:
+            case op_baload:
+                ins = [op_baload];
+                break;
+            case op_caload:
+                ins = [op_caload];
+                break;
+            case op_saload:
+                ins = [op_saload];
+                break;
+            case op_istore:
+                ins = [op_istore, code[i+1]];
+                i += 1;
+                break;
+            case op_lstore:
+                ins = [op_lstore, code[i+1]];
+                i += 1;
+                break;
+            case op_fstore:
+                ins = [op_fstore, code[i+1]];
+                i += 1;
+                break;
+            case op_dstore:
+                ins = [op_dstore, code[i+1]];
+                i += 1;
+                break;
+            case op_astore:
+                ins = [op_astore, code[i+1]];
+                i += 1;
+                break;
+            case op_istore_0:
+                ins = [op_istore, 0];
+                break;
+            case op_istore_1:
+                ins = [op_istore, 1];
+                break;
+            case op_istore_2:
+                ins = [op_istore, 2];
+                break;
+            case op_istore_3:
+                ins = [op_istore, 3];
+                break;
+            case op_lstore_0:
+                ins = [op_lstore, 0];
+                break;
+            case op_lstore_1:
+                ins = [op_lstore, 1];
+                break;
+            case op_lstore_2:
+                ins = [op_lstore, 2];
+                break;
+            case op_lstore_3:
+                ins = [op_lstore, 3];
+                break;
+            case op_fstore_0:
+                ins = [op_fstore, 0];
+                break;
+            case op_fstore_1:
+                ins = [op_fstore, 1];
+                break;
+            case op_fstore_2:
+                ins = [op_fstore, 2];
+                break;
+            case op_fstore_3:
+                ins = [op_fstore, 3];
+                break;
+            case op_dstore_0:
+                ins = [op_dstore, 0];
+                break;
+            case op_dstore_1:
+                ins = [op_dstore, 1];
+                break;
+            case op_dstore_2:
+                ins = [op_dstore, 2];
+                break;
+            case op_dstore_3:
+                ins = [op_dstore, 3];
+                break;
+            case op_astore_0:
+                ins = [op_astore, 0];
+                break;
+            case op_astore_1:
+                ins = [op_astore, 1];
+                break;
+            case op_astore_2:
+                ins = [op_astore, 2];
+                break;
+            case op_astore_3:
+                ins = [op_astore, 3];
+                break;
+            case op_iastore:
+                ins = [op_iastore];
+                break;
+            case op_lastore:
+                ins = [op_lastore];
+                break;
+            case op_fastore:
+                ins = [op_fastore];
+                break;
+            case op_dastore:
+                ins = [op_dastore];
+                break;
+            case op_aastore:
+                ins = [op_aastore];
+                break;
+            case op_bastore:
+                ins = [op_bastore];
+                break;
+            case op_castore:
+                ins = [op_castore];
+                break;
+            case op_sastore:
+                ins = [op_sastore];
+                break;
+            case op_pop:
+                ins = [op_pop];
+                break;
+            case op_pop2:
+                ins = [op_pop2];
+                break;
+            case op_dup:
+                ins = [op_dup];
+                break;
             //case op_dup_x1:
             //case op_dup_x2:
             //case op_dup2:
             //case op_dup2_x1:
             //case op_dup2_x2:
             //case op_swap:
-            //case op_iadd:
-            //case op_ladd:
-            //case op_fadd:
-            //case op_dadd:
-            //case op_isub:
-            //case op_lsub:
-            //case op_fsub:
-            //case op_dsub:
-            //case op_imul:
-            //case op_lmul:
-            //case op_fmul:
-            //case op_dmul:
-            //case op_idiv:
-            //case op_ldiv:
-            //case op_fdiv:
-            //case op_ddiv:
-            //case op_irem:
-            //case op_lrem:
-            //case op_frem:
-            //case op_drem:
-            //case op_ineg:
-            //case op_lneg:
-            //case op_fneg:
-            //case op_dneg:
-            //case op_ishl:
-            //case op_lshl:
-            //case op_ishr:
-            //case op_lshr:
-            //case op_iushr:
-            //case op_lushr:
-            //case op_iand:
-            //case op_land:
-            //case op_ior:
-            //case op_lor:
-            //case op_ixor:
-            //case op_lxor:
-            //case op_iinc:
-            //case op_i2l:
-            //case op_i2f:
-            //case op_i2d:
-            //case op_l2i:
-            //case op_l2f:
-            //case op_l2d:
-            //case op_f2i:
-            //case op_f2l:
-            //case op_f2d:
-            //case op_d2i:
-            //case op_d2l:
-            //case op_d2f:
-            //case op_i2b:
-            //case op_i2c:
-            //case op_i2s:
-            //case op_lcmp:
+            case op_iadd:
+                ins = [op_iadd];
+                break;
+            case op_ladd:
+                ins = [op_ladd];
+                break;
+            case op_fadd:
+                ins = [op_fadd];
+                break;
+            case op_dadd:
+                ins = [op_dadd];
+                break;
+            case op_isub:
+                ins = [op_isub];
+                break;
+            case op_lsub:
+                ins = [op_lsub];
+                break;
+            case op_fsub:
+                ins = [op_fsub];
+                break;
+            case op_dsub:
+                ins = [op_dsub];
+                break;
+            case op_imul:
+                ins = [op_imul];
+                break;
+            case op_lmul:
+                ins = [op_lmul];
+                break;
+            case op_fmul:
+                ins = [op_fmul];
+                break;
+            case op_dmul:
+                ins = [op_dmul];
+                break;
+            case op_idiv:
+                ins = [op_idiv];
+                break;
+            case op_ldiv:
+                ins = [op_ldiv];
+                break;
+            case op_fdiv:
+                ins = [op_fdiv];
+                break;
+            case op_ddiv:
+                ins = [op_ddiv];
+                break;
+            case op_irem:
+                ins = [op_irem];
+                break;
+            case op_lrem:
+                ins = [op_lrem];
+                break;
+            case op_frem:
+                ins = [op_frem];
+                break;
+            case op_drem:
+                ins = [op_drem];
+                break;
+            case op_ineg:
+                ins = [op_ineg];
+                break;
+            case op_lneg:
+                ins = [op_lneg];
+                break;
+            case op_fneg:
+                ins = [op_fneg];
+                break;
+            case op_dneg:
+                ins = [op_dneg];
+                break;
+            case op_ishl:
+                ins = [op_ishl];
+                break;
+            case op_lshl:
+                ins = [op_lshl];
+                break;
+            case op_ishr:
+                ins = [op_ishr];
+                break;
+            case op_lshr:
+                ins = [op_lshr];
+                break;
+            case op_iushr:
+                ins = [op_iushr];
+                break;
+            case op_lushr:
+                ins = [op_lushr];
+                break;
+            case op_iand:
+                ins = [op_iand];
+                break;
+            case op_land:
+                ins = [op_land];
+                break;
+            case op_ior:
+                ins = [op_ior];
+                break;
+            case op_lor:
+                ins = [op_lor];
+                break;
+            case op_ixor:
+                ins = [op_ixor];
+                break;
+            case op_lxor:
+                ins = [op_lxor];
+                break;
+            case op_iinc:
+                ins = [op_iinc, code[i+1], code[i+2]];
+                i += 2;
+                break;
+            case op_i2l:
+                ins = [op_i2l];
+                break;
+            case op_i2f:
+                ins = [op_i2f];
+                break;
+            case op_i2d:
+                ins = [op_i2d];
+                break;
+            case op_l2i:
+                ins = [op_l2i];
+                break;
+            case op_l2f:
+                ins = [op_l2f];
+                break;
+            case op_l2d:
+                ins = [op_l2d];
+                break;
+            case op_f2i:
+                ins = [op_f2i];
+                break;
+            case op_f2l:
+                ins = [op_f2l];
+                break;
+            case op_f2d:
+                ins = [op_f2d];
+                break;
+            case op_d2i:
+                ins = [op_d2i];
+                break;
+            case op_d2l:
+                ins = [op_d2l];
+                break;
+            case op_d2f:
+                ins = [op_d2f];
+                break;
+            case op_i2b:
+                ins = [op_i2b];
+                break;
+            case op_i2c:
+                ins = [op_i2c];
+                break;
+            case op_i2s:
+                ins = [op_i2s];
+                break;
+            case op_lcmp:
+                ins = [op_lcmp];
+                break;
             //case op_fcmpl:
-            //case op_fcmpg:
+            case op_fcmpg:
+                ins = [op_fcmpg];
+                break;
             //case op_dcmpl:
-            //case op_dcmpg:
-            //case op_ifeq:
-            //case op_ifne:
-            //case op_iflt:
-            //case op_ifge:
-            //case op_ifgt:
-            //case op_ifle:
-            //case op_if_icmpeq:
-            //case op_if_icmpne:
-            //case op_if_icmplt:
-            //case op_if_icmpge:
-            //case op_if_icmpgt:
-            //case op_if_icmple:
-            //case op_if_acmpeq:
-            //case op_if_acmpne:
-            //case op_goto:
+            case op_dcmpg:
+                ins = [op_dcmpg];
+                break;
+            case op_ifeq:
+                ins = [op_ifeq, (code[i+1] << 8) | code[i+2]];
+                i += 2;
+                break;
+            case op_ifne:
+                ins = [op_ifne, (code[i+1] << 8) | code[i+2]];
+                i += 2;
+                break;
+            case op_iflt:
+                ins = [op_iflt, (code[i+1] << 8) | code[i+2]];
+                i += 2;
+                break;
+            case op_ifge:
+                ins = [op_ifge, (code[i+1] << 8) | code[i+2]];
+                i += 2;
+                break;
+            case op_ifgt:
+                ins = [op_ifgt, (code[i+1] << 8) | code[i+2]];
+                i += 2;
+                break;
+            case op_ifle:
+                ins = [op_ifle, (code[i+1] << 8) | code[i+2]];
+                i += 2;
+                break;
+            case op_if_icmpeq:
+                ins = [op_if_icmpeq, (code[i+1] << 8) | code[i+2]];
+                i += 2;
+                break;
+            case op_if_icmpne:
+                ins = [op_if_icmpne, (code[i+1] << 8) | code[i+2]];
+                i += 2;
+                break;
+            case op_if_icmplt:
+                ins = [op_if_icmplt, (code[i+1] << 8) | code[i+2]];
+                i += 2;
+                break;
+            case op_if_icmpge:
+                ins = [op_if_icmpge, (code[i+1] << 8) | code[i+2]];
+                i += 2;
+                break;
+            case op_if_icmpgt:
+                ins = [op_if_icmpgt, (code[i+1] << 8) | code[i+2]];
+                i += 2;
+                break;
+            case op_if_icmple:
+                ins = [op_if_icmple, (code[i+1] << 8) | code[i+2]];
+                i += 2;
+                break;
+            case op_if_acmpeq:
+                ins = [op_if_acmpeq, (code[i+1] << 8) | code[i+2]];
+                i += 2;
+                break;
+            case op_if_acmpne:
+                ins = [op_if_acmpne, (code[i+1] << 8) | code[i+2]];
+                i += 2;
+                break;
+            case op_goto:
+                ins = [op_goto, (code[i+1] << 8) | code[i+2]];
+                i += 2;
+                break;
             //case op_jsr:
             //case op_ret:
-            //case op_tableswitch:
-            //case op_lookupswitch:
-            //case op_ireturn:
-            //case op_lreturn:
-            //case op_freturn:
-            //case op_dreturn:
-            //case op_areturn:
+            case op_tableswitch:
+                var j = (i + 4) & ~3;
+                var def = (code[j] << 24) | (code[j+1] << 16) | (code[j+2] << 8) | code[j+3];
+                j += 4;
+                var low = (code[j] << 24) | (code[j+1] << 16) | (code[j+2] << 8) | code[j+3];
+                j += 4;
+                var high = (code[j] << 24) | (code[j+1] << 16) | (code[j+2] << 8) | code[j+3];
+                j += 4;
+                ins = [op_tableswitch, def, low, high];
+                for (k = low; k <= high; k++) {
+                    ins[ins.length] = (code[j] << 24) | (code[j+1] << 16) | (code[j+2] << 8) | code[j+3];
+                    j += 4;
+                }
+                i = j - 1;
+                break;
+            case op_lookupswitch:
+                var j = (i + 4) & ~3;
+                var def = (code[j] << 24) | (code[j+1] << 16) | (code[j+2] << 8) | code[j+3];
+                j += 4;
+                var npairs = (code[j] << 24) | (code[j+1] << 16) | (code[j+2] << 8) | code[j+3];
+                j += 4;
+                ins = [op_lookupswitch, def, []];
+                while (npairs--) {
+                    var match = (code[j] << 24) | (code[j+1] << 16) | (code[j+2] << 8) | code[j+3];
+                    j += 4;
+                    var offset = (code[j] << 24) | (code[j+1] << 16) | (code[j+2] << 8) | code[j+3];
+                    j += 4;
+                    ins[2][match] = offset;
+                }
+                i = j - 1;
+                break;
+            case op_ireturn:
+                ins = [op_ireturn];
+                break;
+            case op_lreturn:
+                ins = [op_lreturn];
+                break;
+            case op_freturn:
+                ins = [op_freturn];
+                break;
+            case op_dreturn:
+                ins = [op_dreturn];
+                break;
+            case op_areturn:
+                ins = [op_areturn];
+                break;
             case op_return:
                 ins = [op_return];
                 break;
@@ -614,9 +1021,18 @@ function decodeBytecode(code) {
                 ins = [op_getstatic, (code[i+1] << 8) | code[i+2]];
                 i += 2;
                 break;
-            //case op_putstatic:
-            //case op_getfield:
-            //case op_putfield:
+            case op_putstatic:
+                ins = [op_putstatic, (code[i+1] << 8) | code[i+2]];
+                i += 2;
+                break;
+            case op_getfield:
+                ins = [op_getfield, (code[i+1] << 8) | code[i+2]];
+                i += 2;
+                break;
+            case op_putfield:
+                ins = [op_putfield, (code[i+1] << 8) | code[i+2]];
+                i += 2;
+                break;
             case op_invokevirtual:
                 ins = [op_invokevirtual, (code[i+1] << 8) | code[i+2]];
                 i += 2;
@@ -625,31 +1041,76 @@ function decodeBytecode(code) {
                 ins = [op_invokespecial, (code[i+1] << 8) | code[i+2]];
                 i += 2;
                 break;
-            //case op_invokestatic:
-            //case op_invokeinterface:
-            //case op_new:
-            //case op_newarray:
-            //case op_anewarray:
-            //case op_arraylength:
-            //case op_athrow:
-            //case op_checkcast:
-            //case op_instanceof:
-            //case op_monitorenter:
-            //case op_monitorexit:
+            case op_invokestatic:
+                ins = [op_invokestatic, (code[i+1] << 8) | code[i+2]];
+                i += 2;
+                break;
+            case op_invokeinterface:
+                ins = [op_invokeinterface, (code[i+1] << 8) | code[i+2]];
+                i += 2;
+                break;
+            case op_new:
+                ins = [op_new, (code[i+1] << 8) | code[i+2]];
+                i += 2;
+                break;
+            case op_newarray:
+                ins = [op_newarray, code[i+1]];
+                i += 1;
+                break;
+            case op_anewarray:
+                ins = [op_anewarray, (code[i+1] << 8) | code[i+2]];
+                i += 2;
+                break;
+            case op_arraylength:
+                ins = [op_arraylength];
+                break;
+            case op_athrow:
+                ins = [op_athrow];
+                break;
+            case op_checkcast:
+                ins = [op_checkcast, (code[i+1] << 8) | code[i+2]];
+                i += 2;
+                break;
+            case op_instanceof:
+                ins = [op_instanceof, (code[i+1] << 8) | code[i+2]];
+                i += 2;
+                break;
+            case op_monitorenter:
+                ins = [op_monitorenter];
+                break;
+            case op_monitorexit:
+                ins = [op_monitorexit];
+                break;
             //case op_wide:
-            //case op_multianewarray:
-            //case op_ifnull:
-            //case op_ifnonnull:
+            case op_multianewarray:
+                ins = [op_multianewarray, (code[i+1] << 8) | code[i+2], code[i+3]];
+                ins += 3;
+                break;
+            case op_ifnull:
+                ins = [op_ifnull, (code[i+1] << 8) | code[i+2]];
+                i += 2;
+                break;
+            case op_ifnonnull:
+                ins = [op_ifnonnull, (code[i+1] << 8) | code[i+2]];
+                i += 2;
+                break;
             //case op_goto_w:
             //case op_jsr_w:
             //case op_breakpoint:
             //case op_ret_w:
             default:
-                throw ("Unknown opcode: " + code[i]);
+                throw ("Unknown opcode: " + code[i] + " " + Instruction[code[i]]);
         }
         r[r.length] = ins;
     }
     return r;
+}
+
+function ExceptionTableEntry(din) {
+    this.start_pc = din.readUnsignedShort();
+    this.end_pc = din.readUnsignedShort();
+    this.handler_pc = din.readUnsignedShort();
+    this.catch_type = din.readUnsignedShort();
 }
 
 var AttributeDecoder = {
