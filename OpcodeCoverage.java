@@ -4,7 +4,7 @@ import java.io.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-class OpcodeTest {
+class OpcodeCoverage {
     public static void main(String[] args) {
         int exitcode = 0;
         try {
