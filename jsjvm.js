@@ -76,8 +76,8 @@ function ConstantClass(cls, din) {
     this.cls = cls;
     this.name_index = din.readUnsignedShort();
 
-    this.info = function() {
-        return "<class " + this.cls.constant_pool[this.name_index].info() + ">";
+    this.toString = function() {
+        return "<class " + this.cls.constant_pool[this.name_index] + ">";
     }
 }
 
@@ -86,8 +86,8 @@ function ConstantFieldref(cls, din) {
     this.class_index = din.readUnsignedShort();
     this.name_and_type_index = din.readUnsignedShort();
 
-    this.info = function() {
-        return "<fieldref " + this.cls.constant_pool[this.class_index].info() + " " + this.cls.constant_pool[this.name_and_type_index].info() + ">";
+    this.toString = function() {
+        return "<fieldref " + this.cls.constant_pool[this.class_index] + " " + this.cls.constant_pool[this.name_and_type_index] + ">";
     }
 }
 
@@ -96,8 +96,8 @@ function ConstantMethodref(cls, din) {
     this.class_index = din.readUnsignedShort();
     this.name_and_type_index = din.readUnsignedShort();
 
-    this.info = function() {
-        return "<methodref " + this.cls.constant_pool[this.class_index].info() + " " + this.cls.constant_pool[this.name_and_type_index].info() + ">";
+    this.toString = function() {
+        return "<methodref " + this.cls.constant_pool[this.class_index] + " " + this.cls.constant_pool[this.name_and_type_index] + ">";
     }
 }
 
@@ -106,8 +106,8 @@ function ConstantNameAndType(cls, din) {
     this.name_index = din.readUnsignedShort();
     this.descriptor_index = din.readUnsignedShort();
 
-    this.info = function() {
-        return "<nameandtype " + this.cls.constant_pool[this.name_index].info() + " " + this.cls.constant_pool[this.descriptor_index].info() + ">";
+    this.toString = function() {
+        return "<nameandtype " + this.cls.constant_pool[this.name_index] + " " + this.cls.constant_pool[this.descriptor_index] + ">";
     }
 }
 
@@ -115,8 +115,8 @@ function ConstantString(cls, din) {
     this.cls = cls;
     this.string_index = din.readUnsignedShort();
 
-    this.info = function() {
-        return "<string " + this.cls.constant_pool[this.string_index].info() + ">";
+    this.toString = function() {
+        return "<string " + this.cls.constant_pool[this.string_index] + ">";
     }
 }
 
@@ -124,30 +124,59 @@ function ConstantUtf8(cls, din) {
     this.length = din.readUnsignedShort();
     this.bytes = din.readBytes(this.length);
 
-    this.info = function() {
+    this.toString = function() {
         return this.bytes;
     }
 }
 
-function Attribute(din) {
+var AttributeDecoder = {
+    "ConstantValue": function(cls, din) {
+        print("here");
+    },
+    "SourceFile": function(cls, din) {
+        this.cls = cls;
+        this.sourcefile_index = din.readUnsignedShort();
+
+        this.sourcefile = this.cls.constant_pool[this.sourcefile_index];
+
+        this.dump = function() {
+            print("    " + this.sourcefile);
+        }
+    }
+}
+
+function Attribute(cls, din) {
+    this.cls = cls;
     this.attribute_name_index = din.readUnsignedShort();
     this.attribute_length = din.readUnsignedInt();
     this.info = din.readBytes(this.attribute_length);
 
+    var name = cls.constant_pool[this.attribute_name_index].toString();
+    if (name in AttributeDecoder) {
+        print(name);
+        this.attr = new AttributeDecoder[name](cls, new DataInput(this.info));
+    }
+
+    this.attribute_name = cls.constant_pool[this.attribute_name_index];
+
     this.dump = function() {
-        print("    attribute_name_index:", this.attribute_name_index);
+        print("    attribute_name:", this.attribute_name);
         print("    attribute_length:", this.attribute_length);
+        if (this.attr) {
+            this.attr.dump();
+        }
     }
 }
 
-function FieldInfo(din) {
+function FieldInfo(cls, din) {
+    this.cls = cls;
     this.access_flags = din.readUnsignedShort();
     this.name_index = din.readUnsignedShort();
     this.descriptor_index = din.readUnsignedShort();
     this.attributes_count = din.readUnsignedShort();
     this.attributes = [];
     for (var i = 0; i < this.attributes_count; i++) {
-        this.attributes[i] = new Attribute(din);
+        this.attributes[i] = new Attribute(cls, din);
     }
 
     this.dump = function() {
@@ -161,20 +190,24 @@ function FieldInfo(din) {
     }
 }
 
-function MethodInfo(din) {
+function MethodInfo(cls, din) {
+    this.cls = cls;
     this.access_flags = din.readUnsignedShort();
     this.name_index = din.readUnsignedShort();
     this.descriptor_index = din.readUnsignedShort();
     this.attributes_count = din.readUnsignedShort();
     this.attributes = [];
     for (var i = 0; i < this.attributes_count; i++) {
-        this.attributes[i] = new Attribute(din);
+        this.attributes[i] = new Attribute(cls, din);
     }
+
+    this.name = cls.constant_pool[this.name_index];
+    this.descriptor = cls.constant_pool[this.descriptor_index];
 
     this.dump = function() {
         print("  access_flags:", this.access_flags);
-        print("  name_index:", this.name_index);
-        print("  descriptor_index:", this.descriptor_index);
+        print("  name:", this.name);
+        print("  descriptor:", this.descriptor);
         print("  attributes_count:", this.attributes_count);
         for (var i = 0; i < this.attributes_count; i++) {
             this.attributes[i].dump();
@@ -220,21 +253,27 @@ function ClassFile(bytes) {
     this.fields_count = din.readUnsignedShort();
     this.fields = [];
     for (var i = 0; i < this.fields_count; i++) {
-        this.fields[i] = new FieldInfo(din);
+        this.fields[i] = new FieldInfo(this, din);
     }
     this.methods_count = din.readUnsignedShort();
     this.methods = [];
     for (var i = 0; i < this.methods_count; i++) {
-        this.methods[i] = new MethodInfo(din);
+        this.methods[i] = new MethodInfo(this, din);
     }
     this.attributes_count = din.readUnsignedShort();
     this.attributes = [];
     for (var i = 0; i < this.attributes_count; i++) {
-        this.attributes[i] = new Attribute(din);
+        this.attributes[i] = new Attribute(this, din);
     }
 
     if (din.remaining() > 0) {
         print("Unexpected extra data: " + din.remaining());
+    }
+
+    this.this_class = this.constant_pool[this.this_class];
+    this.super_class = this.constant_pool[this.super_class];
+    for (var i = 0; i < this.interfaces_count; i++) {
+        this.interfaces[i] = this.constant_pool[this.interfaces[i]];
     }
 
     this.dump = function() {
@@ -243,14 +282,14 @@ function ClassFile(bytes) {
         print("major_version:", this.major_version);
         print("constant_pool_count:", this.constant_pool_count);
         for (var i = 1; i < this.constant_pool_count; i++) {
-            print("  " + i, this.constant_pool[i].info());
+            print("  " + i, this.constant_pool[i]);
         }
         print("access_flags:", this.access_flags);
         print("this_class:", this.this_class);
         print("super_class:", this.super_class);
         print("interfaces_count:", this.interfaces_count);
         for (var i = 0; i < this.interfaces_count; i++) {
-            print("  " + i, this.interfaces_count[i]);
+            print("  " + i, this.interfaces[i]);
         }
         print("fields_count:", this.fields_count);
         for (var i = 0; i < this.fields_count; i++) {
@@ -269,9 +308,5 @@ function ClassFile(bytes) {
 
 defineClass("FileLoader");
 var f = new FileLoader(arguments[0] + ".class");
-try {
-    var c = new ClassFile(f.readAll());
-} catch (e) {
-    print(e.message);
-}
+var c = new ClassFile(f.readAll());
 c.dump();
