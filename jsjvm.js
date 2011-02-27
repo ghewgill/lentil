@@ -351,6 +351,10 @@ function ConstantClass(cls, din) {
     this.toString = function() {
         return "<class " + this.name + ">";
     }
+
+    this.value = function() {
+        return this.cls.classloader.getClass(this.name);
+    }
 }
 
 function ConstantDouble(cls, din) {
@@ -1443,6 +1447,8 @@ Opcode = [
     
     // op_ldc_w
     function(cls, env, ins, pc) {
+        env.push(cls.constant_pool[ins[1]].value());
+        return pc + 1;
     },
     
     // op_ldc2_w
@@ -1983,6 +1989,11 @@ Opcode = [
     
     // op_ifne
     function(cls, env, ins, pc) {
+        var x = env.pop();
+        if (x !== 0) {
+            return ins[1];
+        }
+        return pc + 1;
     },
     
     // op_iflt
@@ -2270,6 +2281,10 @@ function Class(classloader, bytes) {
         this.interfaces[i] = this.constant_pool[this.interfaces[i]];
     }
 
+    this.desiredAssertionStatus = function() {
+        return true;
+    }
+
     this.dump = function() {
         print("magic:", this.magic);
         print("minor_version:", this.minor_version);
@@ -2328,6 +2343,10 @@ function Class(classloader, bytes) {
                 break;
             }
         }
+    }
+
+    this.toString = function() {
+        return "<Class " + this.this_class + ">";
     }
 }
 
