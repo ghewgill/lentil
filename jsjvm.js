@@ -228,7 +228,7 @@ var op_jsr_w            = 201;
 var op_breakpoint       = 202;
 var op_ret_w            = 209;
 
-Instruction = [
+OpcodeName = [
     "op_nop", "op_aconst_null", "op_iconst_m1", "op_iconst_0", "op_iconst_1",
     "op_iconst_2", "op_iconst_3", "op_iconst_4", "op_iconst_5", "op_lconst_0",
     "op_lconst_1", "op_fconst_0", "op_fconst_1", "op_fconst_2", "op_dconst_0",
@@ -298,6 +298,10 @@ function DataInput(bytes) {
         return this.readN(4);
     };
 
+    this.readUnsignedLong = function() {
+        return this.readN(8);
+    }
+
     this.readUnsignedShort = function() {
         return this.readN(2);
     }
@@ -319,7 +323,7 @@ function DataInput(bytes) {
 
 function disassemble(code) {
     for (var i = 0; i < code.length; i++) {
-        var ins = Instruction[code[i][0]];
+        var ins = OpcodeName[code[i][0]];
         for (var j = 1; j < code[i].length; j++) {
             ins += j === 1 ? "  " : ", ";
             ins += code[i][j];
@@ -341,6 +345,21 @@ function ConstantClass(cls, din) {
     }
 }
 
+function ConstantDouble(cls, din) {
+    this.cls = cls;
+    this.bytes = din.readUnsignedLong();
+
+    this.resolve = function() { }
+
+    this.toString = function() {
+        return this.bytes;
+    }
+
+    this.value = function() {
+        return this.bytes;
+    }
+}
+
 function ConstantFieldref(cls, din) {
     this.cls = cls;
     this.class_index = din.readUnsignedShort();
@@ -353,6 +372,21 @@ function ConstantFieldref(cls, din) {
 
     this.toString = function() {
         return "<fieldref " + this.classref + " " + this.name_and_type + ">";
+    }
+}
+
+function ConstantFloat(cls, din) {
+    this.cls = cls;
+    this.bytes = din.readUnsignedInt();
+
+    this.resolve = function() { }
+
+    this.toString = function() {
+        return this.bytes;
+    }
+
+    this.value = function() {
+        return this.bytes;
     }
 }
 
@@ -383,6 +417,21 @@ function ConstantInterfaceMethodref(cls, din) {
 
     this.toString = function() {
         return "<interfacemethodref " + this.classref + " " + this.name_and_type + ">";
+    }
+}
+
+function ConstantLong(cls, din) {
+    this.cls = cls;
+    this.bytes = din.readUnsignedLong();
+
+    this.resolve = function() { }
+
+    this.toString = function() {
+        return this.bytes;
+    }
+
+    this.value = function() {
+        return this.bytes;
     }
 }
 
@@ -513,8 +562,14 @@ function decodeBytecode(code) {
                 ins = [op_ldc, code[i+1]];
                 i += 1;
                 break;
-            //case op_ldc_w:
-            //case op_ldc2_w:
+            case op_ldc_w:
+                ins = [op_ldc_w, (code[i+1] << 8) | code[i+2]];
+                i += 2;
+                break;
+            case op_ldc2_w:
+                ins = [op_ldc2_w, (code[i+1] << 8) | code[i+2]];
+                i += 2;
+                break;
             case op_iload:
                 ins = [op_iload, code[i+1]];
                 i += 1;
@@ -898,11 +953,15 @@ function decodeBytecode(code) {
             case op_lcmp:
                 ins = [op_lcmp];
                 break;
-            //case op_fcmpl:
+            case op_fcmpl:
+                ins = [op_fcmpl];
+                break;
             case op_fcmpg:
                 ins = [op_fcmpg];
                 break;
-            //case op_dcmpl:
+            case op_dcmpl:
+                ins = [op_dcmpl];
+                break;
             case op_dcmpg:
                 ins = [op_dcmpg];
                 break;
@@ -1099,7 +1158,7 @@ function decodeBytecode(code) {
             //case op_breakpoint:
             //case op_ret_w:
             default:
-                throw ("Unknown opcode: " + code[i] + " " + Instruction[code[i]]);
+                throw ("Unknown opcode: " + code[i] + " " + OpcodeName[code[i]]);
         }
         r[r.length] = ins;
     }
@@ -2015,6 +2074,10 @@ Opcode = [
     // op_invokeinterface
     function(cls, env, ins, pc) {
     },
+
+    // op_186
+    function(cls, env, ins, pc) {
+    },
     
     // op_new
     function(cls, env, ins, pc) {
@@ -2095,13 +2158,14 @@ function Class(classloader, bytes) {
     this.constant_pool = [];
     for (var i = 1; i < this.constant_pool_count; i++) {
         var tag = din.readUnsignedByte();
+        var ofs = 0;
         var cp;
         switch (tag) {
             case CONSTANT_Utf8:                 cp = new ConstantUtf8(this, din);     break;
             case CONSTANT_Integer:              cp = new ConstantInteger(this, din);  break;
             case CONSTANT_Float:                cp = new ConstantFloat(this, din);    break;
-            case CONSTANT_Long:                 cp = new ConstantLong(this, din);     break;
-            case CONSTANT_Double:               cp = new ConstantDouble(this, din);   break;
+            case CONSTANT_Long:                 cp = new ConstantLong(this, din);     ofs = 1; break;
+            case CONSTANT_Double:               cp = new ConstantDouble(this, din);   ofs = 1; break;
             case CONSTANT_Class:                cp = new ConstantClass(this, din);    break;
             case CONSTANT_String:               cp = new ConstantString(this, din);   break;
             case CONSTANT_Fieldref:             cp = new ConstantFieldref(this, din); break;
@@ -2112,9 +2176,12 @@ function Class(classloader, bytes) {
                 throw ("Unknown constant pool tag: " + tag);
         }
         this.constant_pool[i] = cp;
+        i += ofs;
     }
     for (var i = 1; i < this.constant_pool_count; i++) {
-        this.constant_pool[i].resolve();
+        if (this.constant_pool[i] !== undefined) {
+            this.constant_pool[i].resolve();
+        }
     }
     this.access_flags = din.readUnsignedShort();
     this.this_class = din.readUnsignedShort();
@@ -2208,7 +2275,7 @@ function Class(classloader, bytes) {
             var op = code[pc][0];
             pc = Opcode[op](this, env, code[pc], pc);
             if (pc === undefined) {
-                throw ("Unimplemented opcode: " + op);
+                throw ("Unimplemented opcode: " + op + " " + OpcodeName[op]);
             }
             if (pc < 0) {
                 break;

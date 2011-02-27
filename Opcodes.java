@@ -1,9 +1,9 @@
 class Opcodes implements Runnable {
     static int static_field;
     int field;
-    static void static_method() { }
-    void method() { }
-    private void private_method() { }
+    static int static_method(int a) { return a; }
+    int method(int a) { return a; }
+    private int private_method(int a) { return a; }
     public void run() { }
 
     // void op_nop() { }
@@ -52,47 +52,47 @@ class Opcodes implements Runnable {
     Object op_aload_1() { Object a = null; return a; }
     Object op_aload_2() { Object a, b = null; return b; }
     Object op_aload_3() { Object a, b, c = null; return c; }
-    int op_iaload() { int[] a = null; return a[0]; }
-    long op_laload() { long[] a = null; return a[0]; }
-    float op_faload() { float[] a = null; return a[0]; }
-    double op_daload() { double[] a = null; return a[0]; }
-    Object op_aaload() { Object[] a = null; return a[0]; }
-    int op_baload() { byte[] a = null; return a[0]; }
-    int op_caload() { char[] a = null; return a[0]; }
-    int op_saload() { short[] a = null; return a[0]; }
-    void op_istore() { int a, b, c, d = 0; }
-    void op_lstore() { long a, b, c = 0; }
-    void op_fstore() { float a, b, c, d = 0; }
-    void op_dstore() { double a, b, c = 0; }
-    void op_astore() { Object a, b, c, d = null; }
+    int op_iaload() { int[] a = new int[] {0}; return a[0]; }
+    long op_laload() { long[] a = new long[] {0}; return a[0]; }
+    float op_faload() { float[] a = new float[] {0}; return a[0]; }
+    double op_daload() { double[] a = new double[] {0}; return a[0]; }
+    Object op_aaload() { Object[] a = new Object[] {null}; return a[0]; }
+    int op_baload() { byte[] a = new byte[] {0}; return a[0]; }
+    int op_caload() { char[] a = new char[] {0}; return a[0]; }
+    int op_saload() { short[] a = new short[] {0}; return a[0]; }
+    int op_istore() { int a, b, c, d = 0; return d; }
+    long op_lstore() { long a, b, c = 0; return c; }
+    float op_fstore() { float a, b, c, d = 0; return d; }
+    double op_dstore() { double a, b, c = 0; return c; }
+    Object op_astore() { Object a, b, c, d = null; return d; }
     //void op_istore_0() { }
-    void op_istore_1() { int a = 0; }
-    void op_istore_2() { int a, b = 0; }
-    void op_istore_3() { int a, b, c = 0; }
+    int op_istore_1() { int a = 0; return a; }
+    int op_istore_2() { int a, b = 0; return b; }
+    int op_istore_3() { int a, b, c = 0; return c; }
     //void op_lstore_0() { }
-    void op_lstore_1() { long a = 0; }
-    void op_lstore_2() { int a; long b = 0; }
-    void op_lstore_3() { long a, b = 0; }
+    long op_lstore_1() { long a = 0; return a; }
+    long op_lstore_2() { int a; long b = 0; return b; }
+    long op_lstore_3() { long a, b = 0; return b; }
     //void op_fstore_0() { }
-    void op_fstore_1() { float a = 0; }
-    void op_fstore_2() { float a, b = 0; }
-    void op_fstore_3() { float a, b, c = 0; }
+    float op_fstore_1() { float a = 0; return a; }
+    float op_fstore_2() { float a, b = 0; return b; }
+    float op_fstore_3() { float a, b, c = 0; return c; }
     //void op_dstore_0() { }
-    void op_dstore_1() { double a = 0; }
-    void op_dstore_2() { int a; double b = 0; }
-    void op_dstore_3() { double a, b = 0; }
+    double op_dstore_1() { double a = 0; return a; }
+    double op_dstore_2() { int a; double b = 0; return b; }
+    double op_dstore_3() { double a, b = 0; return b; }
     //void op_astore_0() { }
-    void op_astore_1() { Object a = null; }
-    void op_astore_2() { Object a, b = null; }
-    void op_astore_3() { Object a, b, c = null; }
-    void op_iastore() { int[] a = null; a[0] = 0; }
-    void op_lastore() { long[] a = null; a[0] = 0; }
-    void op_fastore() { float[] a = null; a[0] = 0; }
-    void op_dastore() { double[] a = null; a[0] = 0; }
-    void op_aastore() { Object[] a = null; a[0] = null; }
-    void op_bastore() { byte[] a = null; a[0] = 0; }
-    void op_castore() { char[] a = null; a[0] = 0; }
-    void op_sastore() { short[] a = null; a[0] = 0; }
+    Object op_astore_1() { Object a = null; return a; }
+    Object op_astore_2() { Object a, b = null; return b; }
+    Object op_astore_3() { Object a, b, c = null; return c; }
+    int op_iastore() { int[] a = new int[1]; a[0] = 0; return a[0]; }
+    long op_lastore() { long[] a = new long[1]; a[0] = 0; return a[0]; }
+    float op_fastore() { float[] a = new float[1]; a[0] = 0; return a[0]; }
+    double op_dastore() { double[] a = new double[1]; a[0] = 0; return a[0]; }
+    Object op_aastore() { Object[] a = new Object[1]; a[0] = null; return a[0]; }
+    byte op_bastore() { byte[] a = new byte[1]; a[0] = 0; return a[0]; }
+    char op_castore() { char[] a = new char[1]; a[0] = 0; return a[0]; }
+    short op_sastore() { short[] a = new short[1]; a[0] = 0; return a[0]; }
     void op_pop() { op_iconst_0(); }
     void op_pop2() { op_lconst_0(); }
     //int op_dup() { int a = 0; return a + a; }
@@ -138,7 +138,7 @@ class Opcodes implements Runnable {
     long op_lor(long a, long b) { return a | b; }
     int op_ixor(int a, int b) { return a ^ b; }
     long op_lxor(long a, long b) { return a ^ b; }
-    int op_iinc(int a) { return a++; }
+    int op_iinc(int a) { return ++a; }
     long op_i2l(int a) { return a; }
     float op_i2f(int a) { return a; }
     double op_i2d(int a) { return a; }
@@ -176,21 +176,21 @@ class Opcodes implements Runnable {
     boolean op_goto(int a, int b) { return a == b; }
     //int op_jsr() { try { if (op_iconst_0() == 0) return 1; } finally { op_iconst_1(); } return 0; }
     //void op_ret() { }
-    void op_tableswitch(int a) { switch (a) { case 1: case 2: case 3: } }
-    void op_lookupswitch(int a) { switch (a) { case 1: case 10: case 100: } }
+    int op_tableswitch(int a) { switch (a) { case 1: case 2: case 3: return a; } return 0; }
+    int op_lookupswitch(int a) { switch (a) { case 1: case 10: case 100: return a; } return 0; }
     int op_ireturn() { return 0; }
     long op_lreturn() { return 0; }
     float op_freturn() { return 0; }
     double op_dreturn() { return 0; }
     Object op_areturn() { return null; }
     void op_return() { }
-    Object op_getstatic() { return static_field; }
-    void op_putstatic() { static_field = 0; }
+    int op_getstatic() { return static_field; }
+    void op_putstatic(int a) { static_field = a; }
     int op_getfield() { return field; }
-    void op_putfield() { field = 0; }
-    void op_invokevirtual() { method(); }
-    void op_invokespecial() { private_method(); }
-    void op_invokestatic() { static_method(); }
+    void op_putfield(int a) { field = a; }
+    int op_invokevirtual(int a) { return method(a); }
+    int op_invokespecial(int a) { return private_method(a); }
+    int op_invokestatic(int a) { return static_method(a); }
     void op_invokeinterface() { ((Runnable)this).run(); }
     Object op_new() { return new Object(); }
     int[] op_newarray() { return new int[10]; }
