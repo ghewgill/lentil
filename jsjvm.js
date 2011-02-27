@@ -321,6 +321,14 @@ function DataInput(bytes) {
     }
 }
 
+function s16(hi, lo) {
+    if (hi & 0x80) {
+        return (((hi & 0x7f) << 8) | lo) - 0x8000;
+    } else {
+        return (hi << 8) | lo;
+    }
+}
+
 function disassemble(code) {
     for (var i = 0; i < code.length; i++) {
         var ins = OpcodeName[code[i][0]];
@@ -499,7 +507,10 @@ function ConstantUtf8(cls, din) {
 
 function decodeBytecode(code) {
     var r = [];
+    var pc_to_index = [];
+    var fixup = [];
     for (var i = 0; i < code.length; i++) {
+        pc_to_index[i] = r.length;
         var ins;
         switch (code[i]) {
             case op_nop:
@@ -966,63 +977,78 @@ function decodeBytecode(code) {
                 ins = [op_dcmpg];
                 break;
             case op_ifeq:
-                ins = [op_ifeq, (code[i+1] << 8) | code[i+2]];
+                ins = [op_ifeq, i + s16(code[i+1], code[i+2])];
+                fixup.push(r.length);
                 i += 2;
                 break;
             case op_ifne:
-                ins = [op_ifne, (code[i+1] << 8) | code[i+2]];
+                ins = [op_ifne, i + s16(code[i+1], code[i+2])];
+                fixup.push(r.length);
                 i += 2;
                 break;
             case op_iflt:
-                ins = [op_iflt, (code[i+1] << 8) | code[i+2]];
+                ins = [op_iflt, i + s16(code[i+1], code[i+2])];
+                fixup.push(r.length);
                 i += 2;
                 break;
             case op_ifge:
-                ins = [op_ifge, (code[i+1] << 8) | code[i+2]];
+                ins = [op_ifge, i + s16(code[i+1], code[i+2])];
+                fixup.push(r.length);
                 i += 2;
                 break;
             case op_ifgt:
-                ins = [op_ifgt, (code[i+1] << 8) | code[i+2]];
+                ins = [op_ifgt, i + s16(code[i+1], code[i+2])];
+                fixup.push(r.length);
                 i += 2;
                 break;
             case op_ifle:
-                ins = [op_ifle, (code[i+1] << 8) | code[i+2]];
+                ins = [op_ifle, i + s16(code[i+1], code[i+2])];
+                fixup.push(r.length);
                 i += 2;
                 break;
             case op_if_icmpeq:
-                ins = [op_if_icmpeq, (code[i+1] << 8) | code[i+2]];
+                ins = [op_if_icmpeq, i + s16(code[i+1], code[i+2])];
+                fixup.push(r.length);
                 i += 2;
                 break;
             case op_if_icmpne:
-                ins = [op_if_icmpne, (code[i+1] << 8) | code[i+2]];
+                ins = [op_if_icmpne, i + s16(code[i+1], code[i+2])];
+                fixup.push(r.length);
                 i += 2;
                 break;
             case op_if_icmplt:
-                ins = [op_if_icmplt, (code[i+1] << 8) | code[i+2]];
+                ins = [op_if_icmplt, i + s16(code[i+1], code[i+2])];
+                fixup.push(r.length);
                 i += 2;
                 break;
             case op_if_icmpge:
-                ins = [op_if_icmpge, (code[i+1] << 8) | code[i+2]];
+                ins = [op_if_icmpge, i + s16(code[i+1], code[i+2])];
+                fixup.push(r.length);
                 i += 2;
                 break;
             case op_if_icmpgt:
-                ins = [op_if_icmpgt, (code[i+1] << 8) | code[i+2]];
+                ins = [op_if_icmpgt, i + s16(code[i+1], code[i+2])];
+                fixup.push(r.length);
                 i += 2;
                 break;
             case op_if_icmple:
-                ins = [op_if_icmple, (code[i+1] << 8) | code[i+2]];
+                ins = [op_if_icmple, i + s16(code[i+1], code[i+2])];
+                fixup.push(r.length);
                 i += 2;
                 break;
             case op_if_acmpeq:
-                ins = [op_if_acmpeq, (code[i+1] << 8) | code[i+2]];
+                ins = [op_if_acmpeq, i + s16(code[i+1], code[i+2])];
+                fixup.push(r.length);
                 i += 2;
                 break;
             case op_if_acmpne:
-                ins = [op_if_acmpne, (code[i+1] << 8) | code[i+2]];
+                ins = [op_if_acmpne, i + s16(code[i+1], code[i+2])];
+                fixup.push(r.length);
                 i += 2;
                 break;
             case op_goto:
-                ins = [op_goto, (code[i+1] << 8) | code[i+2]];
+                ins = [op_goto, i + s16(code[i+1], code[i+2])];
+                fixup.push(r.length);
                 i += 2;
                 break;
             //case op_jsr:
@@ -1037,9 +1063,10 @@ function decodeBytecode(code) {
                 j += 4;
                 ins = [op_tableswitch, def, low, high];
                 for (k = low; k <= high; k++) {
-                    ins[ins.length] = (code[j] << 24) | (code[j+1] << 16) | (code[j+2] << 8) | code[j+3];
+                    ins.push((code[j] << 24) | (code[j+1] << 16) | (code[j+2] << 8) | code[j+3]);
                     j += 4;
                 }
+                fixup.push(r.length);
                 i = j - 1;
                 break;
             case op_lookupswitch:
@@ -1056,6 +1083,7 @@ function decodeBytecode(code) {
                     j += 4;
                     ins[2][match] = offset;
                 }
+                fixup.push(r.length);
                 i = j - 1;
                 break;
             case op_ireturn:
@@ -1146,11 +1174,13 @@ function decodeBytecode(code) {
                 ins += 3;
                 break;
             case op_ifnull:
-                ins = [op_ifnull, (code[i+1] << 8) | code[i+2]];
+                ins = [op_ifnull, i + s16(code[i+1], code[i+2])];
+                fixup.push(r.length);
                 i += 2;
                 break;
             case op_ifnonnull:
-                ins = [op_ifnonnull, (code[i+1] << 8) | code[i+2]];
+                ins = [op_ifnonnull, i + s16(code[i+1], code[i+2])];
+                fixup.push(r.length);
                 i += 2;
                 break;
             //case op_goto_w:
@@ -1160,7 +1190,24 @@ function decodeBytecode(code) {
             default:
                 throw ("Unknown opcode: " + code[i] + " " + OpcodeName[code[i]]);
         }
-        r[r.length] = ins;
+        r.push(ins);
+    }
+    for (var i = 0; i < fixup.length; i++) {
+        switch (r[fixup[i]][0]) {
+            case op_tableswitch:
+                for (var j = 4; j < r[fixup[i]].length; j++) {
+                    r[fixup[i]][j] = pc_to_index[r[fixup[i]][j]];
+                }
+                break;
+            case op_lookupswitch:
+                for (j in r[fixup[i]][2]) {
+                    r[fixup[i]][2][j] = pc_to_index[r[fixup[i]][2][j]];
+                }
+                break;
+            default:
+                r[fixup[i]][1] = pc_to_index[r[fixup[i]][1]];
+                break;
+        }
     }
     return r;
 }
