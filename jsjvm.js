@@ -329,14 +329,18 @@ function s16(hi, lo) {
     }
 }
 
+function disassemble1(opcode) {
+    var ins = OpcodeName[opcode[0]];
+    for (var j = 1; j < opcode.length; j++) {
+        ins += j === 1 ? "  " : ", ";
+        ins += opcode[j];
+    }
+    print("      " + ins);
+}
+
 function disassemble(code) {
     for (var i = 0; i < code.length; i++) {
-        var ins = OpcodeName[code[i][0]];
-        for (var j = 1; j < code[i].length; j++) {
-            ins += j === 1 ? "  " : ", ";
-            ins += code[i][j];
-        }
-        print("      " + ins);
+        disassemble1(code[i]);
     }
 }
 
@@ -1729,6 +1733,8 @@ Opcode = [
     
     // op_dup
     function(cls, env, ins, pc) {
+        env.push(env.top());
+        return pc + 1;
     },
     
     // op_dup_x1
@@ -2123,6 +2129,7 @@ Opcode = [
     
     // op_invokespecial
     function(cls, env, ins, pc) {
+        print("invokespecial", cls.constant_pool[ins[1]]);
     },
     
     // op_invokestatic
@@ -2139,6 +2146,9 @@ Opcode = [
     
     // op_new
     function(cls, env, ins, pc) {
+        var c = cls.classloader.getClass(cls.constant_pool[ins[1]].name);
+        env.push(c.newInstance());
+        return pc + 1;
     },
     
     // op_newarray
@@ -2335,6 +2345,7 @@ function Class(classloader, bytes) {
         var pc = 0;
         while (true) {
             var op = code[pc][0];
+            disassemble1(code[pc]);
             pc = Opcode[op](this, env, code[pc], pc);
             if (pc === undefined) {
                 throw ("Unimplemented opcode: " + op + " " + OpcodeName[op]);
@@ -2343,6 +2354,11 @@ function Class(classloader, bytes) {
                 break;
             }
         }
+    }
+
+    this.newInstance = function() {
+        return new function() {
+        };
     }
 
     this.toString = function() {
