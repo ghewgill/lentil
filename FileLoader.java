@@ -27,9 +27,9 @@ public class FileLoader extends ScriptableObject {
 
     public Object jsFunction_readAll() throws IOException
     {
-        byte[] r = new byte[(int) file.length()];
-        inp.read(r);
-        return r;
+        byte[] buf = new byte[(int) file.length()];
+        inp.read(buf);
+        return new String(buf, 0);
     }
 
     public void jsFunction_close() throws IOException {

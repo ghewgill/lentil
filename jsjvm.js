@@ -279,10 +279,8 @@ function DataInput(bytes) {
     this.index = 0;
 
     this.readBytes = function(n) {
-        var r = [];
-        for (var i = 0; i < n; i++) {
-            r[i] = this.readUnsignedByte();
-        }
+        var r = this.data.substr(this.index, n);
+        this.index += n;
         return r;
     }
 
@@ -309,7 +307,7 @@ function DataInput(bytes) {
     this.readN = function(n) {
         var r = 0;
         while (n > 0) {
-            r = (r << 8) | (this.data[this.index] & 0xff);
+            r = (r << 8) | (this.data.charCodeAt(this.index) & 0xff);
             this.index++;
             n--;
         }
@@ -321,11 +319,31 @@ function DataInput(bytes) {
     }
 }
 
-function s16(hi, lo) {
+function u16(data, index) {
+    var hi = data.charCodeAt(index);
+    var lo = data.charCodeAt(index + 1);
+    return (hi << 8) | lo;
+}
+
+function s16(data, index) {
+    var hi = data.charCodeAt(index);
+    var lo = data.charCodeAt(index + 1);
     if (hi & 0x80) {
         return (((hi & 0x7f) << 8) | lo) - 0x8000;
     } else {
         return (hi << 8) | lo;
+    }
+}
+
+function s32(data, index) {
+    var b0 = data.charCodeAt(index    );
+    var b1 = data.charCodeAt(index + 1);
+    var b2 = data.charCodeAt(index + 2);
+    var b3 = data.charCodeAt(index + 3);
+    if (b0 & 0x80) {
+        return (((b0 & 0x7f) << 24) | (b1 << 16) | (b2 << 8) | b3) - 0x80000000;
+    } else {
+        return (b0 << 24) | (b1 << 16) | (b2 << 8) | b3;
     }
 }
 
@@ -505,11 +523,7 @@ function ConstantUtf8(cls, din) {
     this.resolve = function() {}
 
     this.toString = function() {
-        var r = "";
-        for (var i = 0; i < this.length; i++) {
-            r += String.fromCharCode(this.bytes[i]);
-        }
-        return r;
+        return this.bytes;
     }
 }
 
@@ -520,7 +534,7 @@ function decodeBytecode(code) {
     for (var i = 0; i < code.length; i++) {
         pc_to_index[i] = r.length;
         var ins;
-        switch (code[i]) {
+        switch (code.charCodeAt(i)) {
             case op_nop:
                 ins = [op_nop];
                 break;
@@ -570,43 +584,43 @@ function decodeBytecode(code) {
                 ins = [op_dconst_1];
                 break;
             case op_bipush:
-                ins = [op_bipush, code[i+1]];
+                ins = [op_bipush, code.charCodeAt(i+1)];
                 i += 1;
                 break;
             case op_sipush:
-                ins = [op_sipush, (code[i+1] << 8) | code[i+2]];
+                ins = [op_sipush, s16(code, i+1)];
                 i += 2;
                 break;
             case op_ldc:
-                ins = [op_ldc, code[i+1]];
+                ins = [op_ldc, code.charCodeAt(i+1)];
                 i += 1;
                 break;
             case op_ldc_w:
-                ins = [op_ldc_w, (code[i+1] << 8) | code[i+2]];
+                ins = [op_ldc_w, u16(code, i+1)];
                 i += 2;
                 break;
             case op_ldc2_w:
-                ins = [op_ldc2_w, (code[i+1] << 8) | code[i+2]];
+                ins = [op_ldc2_w, u16(code, i+1)];
                 i += 2;
                 break;
             case op_iload:
-                ins = [op_iload, code[i+1]];
+                ins = [op_iload, code.charCodeAt(i+1)];
                 i += 1;
                 break;
             case op_lload:
-                ins = [op_lload, code[i+1]];
+                ins = [op_lload, code.charCodeAt(i+1)];
                 i += 1;
                 break;
             case op_fload:
-                ins = [op_fload, code[i+1]];
+                ins = [op_fload, code.charCodeAt(i+1)];
                 i += 1;
                 break;
             case op_dload:
-                ins = [op_dload, code[i+1]];
+                ins = [op_dload, code.charCodeAt(i+1)];
                 i += 1;
                 break;
             case op_aload:
-                ins = [op_aload, code[i+1]];
+                ins = [op_aload, code.charCodeAt(i+1)];
                 i += 1;
                 break;
             case op_iload_0:
@@ -694,23 +708,23 @@ function decodeBytecode(code) {
                 ins = [op_saload];
                 break;
             case op_istore:
-                ins = [op_istore, code[i+1]];
+                ins = [op_istore, code.charCodeAt(i+1)];
                 i += 1;
                 break;
             case op_lstore:
-                ins = [op_lstore, code[i+1]];
+                ins = [op_lstore, code.charCodeAt(i+1)];
                 i += 1;
                 break;
             case op_fstore:
-                ins = [op_fstore, code[i+1]];
+                ins = [op_fstore, code.charCodeAt(i+1)];
                 i += 1;
                 break;
             case op_dstore:
-                ins = [op_dstore, code[i+1]];
+                ins = [op_dstore, code.charCodeAt(i+1)];
                 i += 1;
                 break;
             case op_astore:
-                ins = [op_astore, code[i+1]];
+                ins = [op_astore, code.charCodeAt(i+1)];
                 i += 1;
                 break;
             case op_istore_0:
@@ -921,7 +935,7 @@ function decodeBytecode(code) {
                 ins = [op_lxor];
                 break;
             case op_iinc:
-                ins = [op_iinc, code[i+1], code[i+2]];
+                ins = [op_iinc, s16(code, i+1)];
                 i += 2;
                 break;
             case op_i2l:
@@ -985,77 +999,77 @@ function decodeBytecode(code) {
                 ins = [op_dcmpg];
                 break;
             case op_ifeq:
-                ins = [op_ifeq, i + s16(code[i+1], code[i+2])];
+                ins = [op_ifeq, i + s16(code, i+1)];
                 fixup.push(r.length);
                 i += 2;
                 break;
             case op_ifne:
-                ins = [op_ifne, i + s16(code[i+1], code[i+2])];
+                ins = [op_ifne, i + s16(code, i+1)];
                 fixup.push(r.length);
                 i += 2;
                 break;
             case op_iflt:
-                ins = [op_iflt, i + s16(code[i+1], code[i+2])];
+                ins = [op_iflt, i + s16(code, i+1)];
                 fixup.push(r.length);
                 i += 2;
                 break;
             case op_ifge:
-                ins = [op_ifge, i + s16(code[i+1], code[i+2])];
+                ins = [op_ifge, i + s16(code, i+1)];
                 fixup.push(r.length);
                 i += 2;
                 break;
             case op_ifgt:
-                ins = [op_ifgt, i + s16(code[i+1], code[i+2])];
+                ins = [op_ifgt, i + s16(code, i+1)];
                 fixup.push(r.length);
                 i += 2;
                 break;
             case op_ifle:
-                ins = [op_ifle, i + s16(code[i+1], code[i+2])];
+                ins = [op_ifle, i + s16(code, i+1)];
                 fixup.push(r.length);
                 i += 2;
                 break;
             case op_if_icmpeq:
-                ins = [op_if_icmpeq, i + s16(code[i+1], code[i+2])];
+                ins = [op_if_icmpeq, i + s16(code, i+1)];
                 fixup.push(r.length);
                 i += 2;
                 break;
             case op_if_icmpne:
-                ins = [op_if_icmpne, i + s16(code[i+1], code[i+2])];
+                ins = [op_if_icmpne, i + s16(code, i+1)];
                 fixup.push(r.length);
                 i += 2;
                 break;
             case op_if_icmplt:
-                ins = [op_if_icmplt, i + s16(code[i+1], code[i+2])];
+                ins = [op_if_icmplt, i + s16(code, i+1)];
                 fixup.push(r.length);
                 i += 2;
                 break;
             case op_if_icmpge:
-                ins = [op_if_icmpge, i + s16(code[i+1], code[i+2])];
+                ins = [op_if_icmpge, i + s16(code, i+1)];
                 fixup.push(r.length);
                 i += 2;
                 break;
             case op_if_icmpgt:
-                ins = [op_if_icmpgt, i + s16(code[i+1], code[i+2])];
+                ins = [op_if_icmpgt, i + s16(code, i+1)];
                 fixup.push(r.length);
                 i += 2;
                 break;
             case op_if_icmple:
-                ins = [op_if_icmple, i + s16(code[i+1], code[i+2])];
+                ins = [op_if_icmple, i + s16(code, i+1)];
                 fixup.push(r.length);
                 i += 2;
                 break;
             case op_if_acmpeq:
-                ins = [op_if_acmpeq, i + s16(code[i+1], code[i+2])];
+                ins = [op_if_acmpeq, i + s16(code, i+1)];
                 fixup.push(r.length);
                 i += 2;
                 break;
             case op_if_acmpne:
-                ins = [op_if_acmpne, i + s16(code[i+1], code[i+2])];
+                ins = [op_if_acmpne, i + s16(code, i+1)];
                 fixup.push(r.length);
                 i += 2;
                 break;
             case op_goto:
-                ins = [op_goto, i + s16(code[i+1], code[i+2])];
+                ins = [op_goto, i + s16(code, i+1)];
                 fixup.push(r.length);
                 i += 2;
                 break;
@@ -1063,15 +1077,15 @@ function decodeBytecode(code) {
             //case op_ret:
             case op_tableswitch:
                 var j = (i + 4) & ~3;
-                var def = (code[j] << 24) | (code[j+1] << 16) | (code[j+2] << 8) | code[j+3];
+                var def = s32(code, j);
                 j += 4;
-                var low = (code[j] << 24) | (code[j+1] << 16) | (code[j+2] << 8) | code[j+3];
+                var low = s32(code, j);
                 j += 4;
-                var high = (code[j] << 24) | (code[j+1] << 16) | (code[j+2] << 8) | code[j+3];
+                var high = s32(code, j);
                 j += 4;
                 ins = [op_tableswitch, def, low, high];
                 for (k = low; k <= high; k++) {
-                    ins.push((code[j] << 24) | (code[j+1] << 16) | (code[j+2] << 8) | code[j+3]);
+                    ins.push(s32(code, j));
                     j += 4;
                 }
                 fixup.push(r.length);
@@ -1079,15 +1093,15 @@ function decodeBytecode(code) {
                 break;
             case op_lookupswitch:
                 var j = (i + 4) & ~3;
-                var def = (code[j] << 24) | (code[j+1] << 16) | (code[j+2] << 8) | code[j+3];
+                var def = s32(code, j);
                 j += 4;
-                var npairs = (code[j] << 24) | (code[j+1] << 16) | (code[j+2] << 8) | code[j+3];
+                var npairs = s32(code, j);
                 j += 4;
                 ins = [op_lookupswitch, def, []];
                 while (npairs--) {
-                    var match = (code[j] << 24) | (code[j+1] << 16) | (code[j+2] << 8) | code[j+3];
+                    var match = s32(code, j);
                     j += 4;
-                    var offset = (code[j] << 24) | (code[j+1] << 16) | (code[j+2] << 8) | code[j+3];
+                    var offset = s32(code, j);
                     j += 4;
                     ins[2][match] = offset;
                 }
@@ -1113,47 +1127,47 @@ function decodeBytecode(code) {
                 ins = [op_return];
                 break;
             case op_getstatic:
-                ins = [op_getstatic, (code[i+1] << 8) | code[i+2]];
+                ins = [op_getstatic, u16(code, i+1)];
                 i += 2;
                 break;
             case op_putstatic:
-                ins = [op_putstatic, (code[i+1] << 8) | code[i+2]];
+                ins = [op_putstatic, u16(code, i+1)];
                 i += 2;
                 break;
             case op_getfield:
-                ins = [op_getfield, (code[i+1] << 8) | code[i+2]];
+                ins = [op_getfield, u16(code, i+1)];
                 i += 2;
                 break;
             case op_putfield:
-                ins = [op_putfield, (code[i+1] << 8) | code[i+2]];
+                ins = [op_putfield, u16(code, i+1)];
                 i += 2;
                 break;
             case op_invokevirtual:
-                ins = [op_invokevirtual, (code[i+1] << 8) | code[i+2]];
+                ins = [op_invokevirtual, u16(code, i+1)];
                 i += 2;
                 break;
             case op_invokespecial:
-                ins = [op_invokespecial, (code[i+1] << 8) | code[i+2]];
+                ins = [op_invokespecial, u16(code, i+1)];
                 i += 2;
                 break;
             case op_invokestatic:
-                ins = [op_invokestatic, (code[i+1] << 8) | code[i+2]];
+                ins = [op_invokestatic, u16(code, i+1)];
                 i += 2;
                 break;
             case op_invokeinterface:
-                ins = [op_invokeinterface, (code[i+1] << 8) | code[i+2]];
+                ins = [op_invokeinterface, u16(code, i+1)];
                 i += 2;
                 break;
             case op_new:
-                ins = [op_new, (code[i+1] << 8) | code[i+2]];
+                ins = [op_new, u16(code, i+1)];
                 i += 2;
                 break;
             case op_newarray:
-                ins = [op_newarray, code[i+1]];
+                ins = [op_newarray, code.charCodeAt(i+1)];
                 i += 1;
                 break;
             case op_anewarray:
-                ins = [op_anewarray, (code[i+1] << 8) | code[i+2]];
+                ins = [op_anewarray, u16(code, i+1)];
                 i += 2;
                 break;
             case op_arraylength:
@@ -1163,11 +1177,11 @@ function decodeBytecode(code) {
                 ins = [op_athrow];
                 break;
             case op_checkcast:
-                ins = [op_checkcast, (code[i+1] << 8) | code[i+2]];
+                ins = [op_checkcast, u16(code, i+1)];
                 i += 2;
                 break;
             case op_instanceof:
-                ins = [op_instanceof, (code[i+1] << 8) | code[i+2]];
+                ins = [op_instanceof, u16(code, i+1)];
                 i += 2;
                 break;
             case op_monitorenter:
@@ -1178,16 +1192,16 @@ function decodeBytecode(code) {
                 break;
             //case op_wide:
             case op_multianewarray:
-                ins = [op_multianewarray, (code[i+1] << 8) | code[i+2], code[i+3]];
+                ins = [op_multianewarray, u16(code, i+1), code.charCodeAt(i+3)];
                 ins += 3;
                 break;
             case op_ifnull:
-                ins = [op_ifnull, i + s16(code[i+1], code[i+2])];
+                ins = [op_ifnull, i + s16(code, i+1)];
                 fixup.push(r.length);
                 i += 2;
                 break;
             case op_ifnonnull:
-                ins = [op_ifnonnull, i + s16(code[i+1], code[i+2])];
+                ins = [op_ifnonnull, i + s16(code, i+1)];
                 fixup.push(r.length);
                 i += 2;
                 break;
@@ -1196,7 +1210,7 @@ function decodeBytecode(code) {
             //case op_breakpoint:
             //case op_ret_w:
             default:
-                throw ("Unknown opcode: " + code[i] + " " + OpcodeName[code[i]]);
+                throw ("Unknown opcode: " + code.charCodeAt(i) + " " + OpcodeName[code.charCodeAt(i)]);
         }
         r.push(ins);
     }
