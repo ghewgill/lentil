@@ -1552,6 +1552,7 @@ Opcode = [
 ];
 
 function Class(classloader, bytes) {
+    this.__jvm_class = this;
     this.classloader = classloader;
     var din = new DataInput(bytes);
     this.magic = din.readInt();
@@ -2373,7 +2374,8 @@ Class.prototype.dump = function() {
 
 Class.prototype.exec = function(penv, method, obj, args) {
     var env = new Environment(penv);
-    var m = this.method_by_name[method];
+    var cls = obj ? obj.__jvm_class : this;
+    var m = cls.method_by_name[method];
     if (m === undefined) {
         var name = method.substr(0, method.indexOf("("));
         if (name in obj) {
@@ -2394,7 +2396,7 @@ Class.prototype.exec = function(penv, method, obj, args) {
     while (true) {
         var op = code[pc][0];
         disassemble1(code[pc]);
-        pc = Opcode[op](this, env, code[pc], pc);
+        pc = Opcode[op](cls, env, code[pc], pc);
         if (pc === undefined) {
             throw ("Unimplemented opcode: " + op + " " + OpcodeName[op]);
         }
@@ -2405,7 +2407,9 @@ Class.prototype.exec = function(penv, method, obj, args) {
 }
 
 Class.prototype.newInstance = function() {
+    var cls = this;
     return new function() {
+        this.__jvm_class = cls;
     };
 }
 
