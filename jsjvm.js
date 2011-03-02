@@ -2457,16 +2457,9 @@ function FileClassLoader(parent) {
     }
 }
 
-function Environment(parent, cls, method, obj, args) {
-    this.parent = parent;
-    this.cls = cls;
-    this.method = method;
-    this.obj = obj;
-    this.args = args;
+function Stack() {
     this.stack = [];
     this.index = 0;
-    this.local = [];
-    this.pc = 0;
 
     this.pop = function() {
         return this.stack[--this.index];
@@ -2479,6 +2472,21 @@ function Environment(parent, cls, method, obj, args) {
     this.top = function() {
         return this.stack[this.index - 1];
     }
+}
+
+function Environment(parent, cls, method, obj, args) {
+    this.parent = parent;
+    this.cls = cls;
+    this.method = method;
+    this.obj = obj;
+    this.args = args;
+    this.stack = parent ? parent.stack : new Stack();
+    this.local = [];
+    this.pc = 0;
+
+    this.pop = function() { return this.stack.pop(); }
+    this.push = function(x) { this.stack.push(x); }
+    this.top = function() { return this.stack.top(); }
 }
 
 function ConsolePrintStream() {
