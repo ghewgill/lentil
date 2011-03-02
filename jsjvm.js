@@ -1321,7 +1321,7 @@ Opcode = [
     // op_ifne
     function(cls, env, ins, pc) {
         var x = env.pop();
-        if (x !== 0) {
+        if (x != 0) {
             return ins[1];
         }
         return pc + 1;
@@ -1623,6 +1623,8 @@ function Class(classloader, bytes) {
     for (var i = 0; i < this.interfaces_count; i++) {
         this.interfaces[i] = this.constant_pool[this.interfaces[i]];
     }
+
+    this["$assertionsDisabled"] = !this.desiredAssertionStatus();
 }
 
 Class.prototype.desiredAssertionStatus = function() {
