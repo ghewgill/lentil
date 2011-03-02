@@ -1491,6 +1491,8 @@ Opcode = [
     
     // op_aload
     function(cls, env, ins, pc) {
+        env.push(env.local[ins[1]]);
+        return pc + 1;
     },
     
     // op_iload_0
@@ -2143,7 +2145,15 @@ Opcode = [
     
     // op_invokespecial
     function(cls, env, ins, pc) {
-        print("invokespecial", cls.constant_pool[ins[1]]);
+        var mr = cls.constant_pool[ins[1]];
+        var nargs = getNargs(mr.name_and_type.descriptor);
+        var args = [];
+        while (nargs--) {
+            args[nargs] = env.pop();
+        }
+        var obj = env.pop();
+        cls.classloader.getClass(mr.classref.name).exec(env, mr.name_and_type.name + mr.name_and_type.descriptor, obj, args);
+        return pc + 1;
     },
     
     // op_invokestatic
@@ -2338,7 +2348,8 @@ function Class(classloader, bytes) {
         }
     }
 
-    this.exec = function(env, method, obj, args) {
+    this.exec = function(penv, method, obj, args) {
+        var env = new Environment(penv);
         var m = this.method_by_name[method];
         if (m === undefined) {
             var name = method.substr(0, method.indexOf("("));
@@ -2442,9 +2453,11 @@ function FileClassLoader(parent) {
     }
 }
 
-function Environment() {
+function Environment(parent) {
+    this.parent = parent;
     this.stack = [];
     this.index = 0;
+    this.local = [];
 
     this.pop = function() {
         return this.stack[--this.index];
