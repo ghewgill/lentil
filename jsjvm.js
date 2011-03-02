@@ -934,6 +934,8 @@ Opcode = [
     
     // op_astore
     function(cls, env, ins, pc) {
+        env.local[ins[1]] = env.pop();
+        return pc + 1;
     },
     
     // op_istore_0
