@@ -700,70 +700,104 @@ Opcode = [
     
     // op_aconst_null
     function(cls, env, ins, pc) {
+        env.push(null);
+        return pc + 1;
     },
     
     // op_iconst_m1
     function(cls, env, ins, pc) {
+        env.push(-1);
+        return pc + 1;
     },
     
     // op_iconst_0
     function(cls, env, ins, pc) {
+        env.push(0);
+        return pc + 1;
     },
     
     // op_iconst_1
     function(cls, env, ins, pc) {
+        env.push(1);
+        return pc + 1;
     },
     
     // op_iconst_2
     function(cls, env, ins, pc) {
+        env.push(2);
+        return pc + 1;
     },
     
     // op_iconst_3
     function(cls, env, ins, pc) {
+        env.push(3);
+        return pc + 1;
     },
     
     // op_iconst_4
     function(cls, env, ins, pc) {
+        env.push(4);
+        return pc + 1;
     },
     
     // op_iconst_5
     function(cls, env, ins, pc) {
+        env.push(5);
+        return pc + 1;
     },
     
     // op_lconst_0
     function(cls, env, ins, pc) {
+        env.push(0);
+        return pc + 1;
     },
     
     // op_lconst_1
     function(cls, env, ins, pc) {
+        env.push(1);
+        return pc + 1;
     },
     
     // op_fconst_0
     function(cls, env, ins, pc) {
+        env.push(0);
+        return pc + 1;
     },
     
     // op_fconst_1
     function(cls, env, ins, pc) {
+        env.push(1);
+        return pc + 1;
     },
     
     // op_fconst_2
     function(cls, env, ins, pc) {
+        env.push(2);
+        return pc + 1;
     },
     
     // op_dconst_0
     function(cls, env, ins, pc) {
+        env.push(0);
+        return pc + 1;
     },
     
     // op_dconst_1
     function(cls, env, ins, pc) {
+        env.push(1);
+        return pc + 1;
     },
     
     // op_bipush
     function(cls, env, ins, pc) {
+        env.push(ins[1]);
+        return pc + 1;
     },
     
     // op_sipush
     function(cls, env, ins, pc) {
+        env.push(ins[1]);
+        return pc + 1;
     },
     
     // op_ldc
@@ -784,18 +818,26 @@ Opcode = [
     
     // op_iload
     function(cls, env, ins, pc) {
+        env.push(env.local[ins[1]]);
+        return pc + 1;
     },
     
     // op_lload
     function(cls, env, ins, pc) {
+        env.push(env.local[ins[1]]);
+        return pc + 1;
     },
     
     // op_fload
     function(cls, env, ins, pc) {
+        env.push(env.local[ins[1]]);
+        return pc + 1;
     },
     
     // op_dload
     function(cls, env, ins, pc) {
+        env.push(env.local[ins[1]]);
+        return pc + 1;
     },
     
     // op_aload
@@ -918,18 +960,26 @@ Opcode = [
     
     // op_istore
     function(cls, env, ins, pc) {
+        env.local[ins[1]] = env.pop();
+        return pc + 1;
     },
     
     // op_lstore
     function(cls, env, ins, pc) {
+        env.local[ins[1]] = env.pop();
+        return pc + 1;
     },
     
     // op_fstore
     function(cls, env, ins, pc) {
+        env.local[ins[1]] = env.pop();
+        return pc + 1;
     },
     
     // op_dstore
     function(cls, env, ins, pc) {
+        env.local[ins[1]] = env.pop();
+        return pc + 1;
     },
     
     // op_astore
@@ -1298,10 +1348,32 @@ Opcode = [
     
     // op_lcmp
     function(cls, env, ins, pc) {
+        var v2 = env.pop();
+        var v1 = env.pop();
+        if (v1 == v2) {
+            env.push(0);
+        } else if (v1 > v2) {
+            env.push(1);
+        } else {
+            env.push(-1);
+        }
+        return pc + 1;
     },
     
     // op_fcmpl
     function(cls, env, ins, pc) {
+        var v2 = env.pop();
+        var v1 = env.pop();
+        if (v1 == v2) {
+            env.push(0);
+        } else if (v1 > v2) {
+            env.push(1);
+        } else if (v1 < v2) {
+            env.push(-1);
+        } else {
+            env.push(-1);
+        }
+        return pc + 1;
     },
     
     // op_fcmpg
@@ -1310,6 +1382,18 @@ Opcode = [
     
     // op_dcmpl
     function(cls, env, ins, pc) {
+        var v2 = env.pop();
+        var v1 = env.pop();
+        if (v1 == v2) {
+            env.push(0);
+        } else if (v1 > v2) {
+            env.push(1);
+        } else if (v1 < v2) {
+            env.push(-1);
+        } else {
+            env.push(-1);
+        }
+        return pc + 1;
     },
     
     // op_dcmpg
@@ -1318,6 +1402,10 @@ Opcode = [
     
     // op_ifeq
     function(cls, env, ins, pc) {
+        if (env.pop() == 0) {
+            return ins[1];
+        }
+        return pc + 1;
     },
     
     // op_ifne
@@ -1347,6 +1435,12 @@ Opcode = [
     
     // op_if_icmpeq
     function(cls, env, ins, pc) {
+        var x = env.pop();
+        var y = env.pop();
+        if (x == y) {
+            return ins[1];
+        }
+        return pc + 1;
     },
     
     // op_if_icmpne
@@ -1399,22 +1493,32 @@ Opcode = [
     
     // op_ireturn
     function(cls, env, ins, pc) {
+        // object to return is already on stack
+        return -1;
     },
     
     // op_lreturn
     function(cls, env, ins, pc) {
+        // object to return is already on stack
+        return -1;
     },
     
     // op_freturn
     function(cls, env, ins, pc) {
+        // object to return is already on stack
+        return -1;
     },
     
     // op_dreturn
     function(cls, env, ins, pc) {
+        // object to return is already on stack
+        return -1;
     },
     
     // op_areturn
     function(cls, env, ins, pc) {
+        // object to return is already on stack
+        return -1;
     },
     
     // op_return
@@ -1540,6 +1644,10 @@ Opcode = [
     
     // op_ifnull
     function(cls, env, ins, pc) {
+        if (env.pop() === null) {
+            return ins[1];
+        }
+        return pc + 1;
     },
     
     // op_ifnonnull
@@ -1703,7 +1811,7 @@ Class.prototype.decodeBytecode = function(code) {
                 ins = [op_dconst_1];
                 break;
             case op_bipush:
-                ins = [op_bipush, code.charCodeAt(i+1)];
+                ins = [op_bipush, s8(code, i+1)];
                 i += 1;
                 break;
             case op_sipush:
