@@ -541,6 +541,13 @@ function ExceptionTableEntry(din) {
     this.end_pc = din.readUnsignedShort();
     this.handler_pc = din.readUnsignedShort();
     this.catch_type = din.readUnsignedShort();
+
+    this.dump = function() {
+        print("      start_pc:", this.start_pc);
+        print("      end_pc:", this.end_pc);
+        print("      handler_pc:", this.handler_pc);
+        print("      catch_type:", this.catch_type);
+    }
 }
 
 var AttributeDecoder = {
@@ -568,7 +575,7 @@ var AttributeDecoder = {
             disassemble(this.code);
             print("    exception_table_length:", this.exception_table_length);
             for (var i = 0; i < this.exception_table_length; i++) {
-                this.exception_table_length[i].dump();
+                this.exception_table[i].dump();
             }
             print("    attributes_count:", this.attributes_count);
             for (var i = 0; i < this.attributes_count; i++) {
