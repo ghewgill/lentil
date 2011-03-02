@@ -1450,7 +1450,13 @@ Opcode = [
             args[nargs] = env.pop();
         }
         var obj = env.pop();
-        cls.exec(env, mr.name_and_type.name + mr.name_and_type.descriptor, obj, args);
+        var r = callMethod(env, mr.classref, mr.name_and_type.name + mr.name_and_type.descriptor, obj, args);
+        if (r instanceof Environment) {
+            return r;
+        }
+        if (mr.name_and_type.descriptor.charAt(mr.name_and_type.descriptor.length - 1) != "V") {
+            env.push(r);
+        }
         return pc + 1;
     },
     
@@ -1463,7 +1469,13 @@ Opcode = [
             args[nargs] = env.pop();
         }
         var obj = env.pop();
-        cls.classloader.getClass(mr.classref.name).exec(env, mr.name_and_type.name + mr.name_and_type.descriptor, obj, args);
+        var r = callMethod(env, cls.classloader.getClass(mr.classref.name), mr.name_and_type.name + mr.name_and_type.descriptor, obj, args);
+        if (r instanceof Environment) {
+            return r;
+        }
+        if (mr.name_and_type.descriptor.charAt(mr.name_and_type.descriptor.length - 1) != "V") {
+            env.push(r);
+        }
         return pc + 1;
     },
     
@@ -2372,40 +2384,6 @@ Class.prototype.dump = function() {
     }
 }
 
-Class.prototype.exec = function(penv, method, obj, args) {
-    var env = new Environment(penv);
-    var cls = obj ? obj.__jvm_class : this;
-    var m = cls.method_by_name[method];
-    if (m === undefined) {
-        var name = method.substr(0, method.indexOf("("));
-        if (name in obj) {
-            var jsargs = [];
-            for (var i = 0; i < args.length; i++) {
-                if (args[i].classref === java_lang_String) {
-                    jsargs[i] = args[i].s;
-                } else {
-                    jsargs[i] = args[i];
-                }
-            }
-            return obj[name].apply(obj, jsargs);
-        }
-        throw ("Undefined method: " + method);
-    }
-    var code = m.attribute_by_name["Code"].attr.code;
-    var pc = 0;
-    while (true) {
-        var op = code[pc][0];
-        disassemble1(code[pc]);
-        pc = Opcode[op](cls, env, code[pc], pc);
-        if (pc === undefined) {
-            throw ("Unimplemented opcode: " + op + " " + OpcodeName[op]);
-        }
-        if (pc < 0) {
-            break;
-        }
-    }
-}
-
 Class.prototype.newInstance = function() {
     var cls = this;
     return new function() {
@@ -2479,11 +2457,16 @@ function FileClassLoader(parent) {
     }
 }
 
-function Environment(parent) {
+function Environment(parent, cls, method, obj, args) {
     this.parent = parent;
+    this.cls = cls;
+    this.method = method;
+    this.obj = obj;
+    this.args = args;
     this.stack = [];
     this.index = 0;
     this.local = [];
+    this.pc = 0;
 
     this.pop = function() {
         return this.stack[--this.index];
@@ -2504,11 +2487,60 @@ function ConsolePrintStream() {
     }
 }
 
+function callMethod(env, cls, method, obj, args) {
+    var objcls = obj ? obj.__jvm_class : cls;
+    var m = objcls.method_by_name[method];
+    if (m === undefined) {
+        var name = method.substr(0, method.indexOf("("));
+        if (name in obj) {
+            var jsargs = [];
+            for (var i = 0; i < args.length; i++) {
+                if (args[i].classref === java_lang_String) {
+                    jsargs[i] = args[i].s;
+                } else {
+                    jsargs[i] = args[i];
+                }
+            }
+            return obj[name].apply(obj, jsargs);
+        }
+        throw ("Undefined method: " + method);
+    }
+    return new Environment(env, cls, m, obj, args);
+}
+
+function loop(env) {
+    while (env !== null) {
+        var code = env.method.attribute_by_name["Code"].attr.code;
+        var pc = env.pc;
+        while (true) {
+            var op = code[pc][0];
+            disassemble1(code[pc]);
+            var next = Opcode[op](env.cls, env, code[pc], pc);
+            if (next === undefined) {
+                throw ("Unimplemented opcode: " + op + " " + OpcodeName[op]);
+            }
+            if (next instanceof Environment) {
+                env.pc = pc + 1;
+                env = next;
+                break;
+            } else if (next < 0) {
+                env = env.parent;
+                break;
+            } else {
+                pc = next;
+            }
+        }
+    }
+}
+
 var scl = new SystemClassLoader();
 var jls = scl.getClass("java/lang/System");
 jls.out = new ConsolePrintStream();
 var fcl = new FileClassLoader(scl);
 var c = fcl.getClass(arguments[0]);
 //c.dump();
-var env = new Environment();
-c.exec(env, "main([Ljava/lang/String;)V", null, []);
+var env = callMethod(null, c, "main([Ljava/lang/String;)V", null, []);
+if (!(env instanceof Environment)) {
+    throw ("expected Environment, got " + env);
+}
+loop(env);
