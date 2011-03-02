@@ -513,7 +513,7 @@ function ConstantString(cls, din) {
     this.string_index = din.readUnsignedShort();
 
     this.resolve = function() {
-        this.string = this.cls.classloader.getClass("java/lang/String").newInstance(this.cls.constant_pool[this.string_index].toString());
+        this.string = this.cls.constant_pool[this.string_index].toString();
     }
 
     this.toString = function() {
