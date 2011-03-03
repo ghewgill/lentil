@@ -937,34 +937,66 @@ Opcode = [
     
     // op_iaload
     function(cls, env, ins, pc) {
+        var index = env.pop();
+        var a = env.pop();
+        env.push(a.load(index));
+        return pc + 1;
     },
     
     // op_laload
     function(cls, env, ins, pc) {
+        var index = env.pop();
+        var a = env.pop();
+        env.push(a.load(index));
+        return pc + 1;
     },
     
     // op_faload
     function(cls, env, ins, pc) {
+        var index = env.pop();
+        var a = env.pop();
+        env.push(a.load(index));
+        return pc + 1;
     },
     
     // op_daload
     function(cls, env, ins, pc) {
+        var index = env.pop();
+        var a = env.pop();
+        env.push(a.load(index));
+        return pc + 1;
     },
     
     // op_aaload
     function(cls, env, ins, pc) {
+        var index = env.pop();
+        var a = env.pop();
+        env.push(a.load(index));
+        return pc + 1;
     },
     
     // op_baload
     function(cls, env, ins, pc) {
+        var index = env.pop();
+        var a = env.pop();
+        env.push(a.load(index));
+        return pc + 1;
     },
     
     // op_caload
     function(cls, env, ins, pc) {
+        var index = env.pop();
+        var a = env.pop();
+        env.push(a.load(index));
+        return pc + 1;
     },
     
     // op_saload
     function(cls, env, ins, pc) {
+        var index = env.pop();
+        var a = env.pop();
+        env.push(a.load(index));
+        return pc + 1;
     },
     
     // op_istore
@@ -1079,42 +1111,88 @@ Opcode = [
     
     // op_iastore
     function(cls, env, ins, pc) {
+        var value = env.pop();
+        var index = env.pop();
+        var a = env.pop();
+        a.store(index, value);
+        return pc + 1;
     },
     
     // op_lastore
     function(cls, env, ins, pc) {
+        var value = env.pop();
+        var index = env.pop();
+        var a = env.pop();
+        a.store(index, value);
+        return pc + 1;
     },
     
     // op_fastore
     function(cls, env, ins, pc) {
+        var value = env.pop();
+        var index = env.pop();
+        var a = env.pop();
+        a.store(index, value);
+        return pc + 1;
     },
     
     // op_dastore
     function(cls, env, ins, pc) {
+        var value = env.pop();
+        var index = env.pop();
+        var a = env.pop();
+        a.store(index, value);
+        return pc + 1;
     },
     
     // op_aastore
     function(cls, env, ins, pc) {
+        var value = env.pop();
+        var index = env.pop();
+        var a = env.pop();
+        a.store(index, value);
+        return pc + 1;
     },
     
     // op_bastore
     function(cls, env, ins, pc) {
+        var value = env.pop();
+        var index = env.pop();
+        var a = env.pop();
+        a.store(index, value);
+        return pc + 1;
     },
     
     // op_castore
     function(cls, env, ins, pc) {
+        var value = env.pop();
+        var index = env.pop();
+        var a = env.pop();
+        a.store(index, value);
+        return pc + 1;
     },
     
     // op_sastore
     function(cls, env, ins, pc) {
+        var value = env.pop();
+        var index = env.pop();
+        var a = env.pop();
+        a.store(index, value);
+        return pc + 1;
     },
     
     // op_pop
     function(cls, env, ins, pc) {
+        env.pop();
+        return pc + 1;
     },
     
     // op_pop2
     function(cls, env, ins, pc) {
+        // TODO: must figure out whether top is a cat1 or cat2 type
+        // for now, assume single cat2 value
+        env.pop();
+        return pc + 1;
     },
     
     // op_dup
@@ -1613,10 +1691,14 @@ Opcode = [
     
     // op_newarray
     function(cls, env, ins, pc) {
+        env.push(new JArray(ins[1], env.pop(), 0));
+        return pc + 1;
     },
     
     // op_anewarray
     function(cls, env, ins, pc) {
+        env.push(new JArray(ins[1], env.pop(), null));
+        return pc + 1;
     },
     
     // op_arraylength
