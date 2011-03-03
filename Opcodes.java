@@ -176,8 +176,8 @@ class Opcodes implements Runnable {
     boolean op_goto(int a, int b) { return a == b; }
     //int op_jsr() { try { if (op_iconst_0() == 0) return 1; } finally { op_iconst_1(); } return 0; }
     //void op_ret() { }
-    int op_tableswitch(int a) { switch (a) { case 1: case 2: case 3: return a; } return 0; }
-    int op_lookupswitch(int a) { switch (a) { case 1: case 10: case 100: return a; } return 0; }
+    int op_tableswitch(int a) { switch (a) { case 1: return 1; case 2: return 2; case 3: return 3; } return 0; }
+    int op_lookupswitch(int a) { switch (a) { case 1: return 1; case 10: return 10; case 100: return 100; } return 0; }
     int op_ireturn() { return 0; }
     long op_lreturn() { return 0; }
     float op_freturn() { return 0; }
