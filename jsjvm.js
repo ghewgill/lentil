@@ -365,6 +365,22 @@ function s32(data, index) {
     }
 }
 
+function x32(x) {
+    if (x & 0x80000000) {
+        return -(x & 0x7fffffff);
+    } else {
+        return x;
+    }
+}
+
+function x64(x) {
+    if (x & 0x8000000000000000) {
+        return -(x & 0x7fffffffffffffff);
+    } else {
+        return x;
+    }
+}
+
 function disassemble1(opcode) {
     var ins = OpcodeName[opcode[0]];
     for (var j = 1; j < opcode.length; j++) {
@@ -709,149 +725,151 @@ Opcode = [
     
     // op_aconst_null
     function(cls, env, ins, pc) {
-        env.push(null);
+        env.push1(null);
         return pc + 1;
     },
     
     // op_iconst_m1
     function(cls, env, ins, pc) {
-        env.push(-1);
+        env.push1(-1);
         return pc + 1;
     },
     
     // op_iconst_0
     function(cls, env, ins, pc) {
-        env.push(0);
+        env.push1(0);
         return pc + 1;
     },
     
     // op_iconst_1
     function(cls, env, ins, pc) {
-        env.push(1);
+        env.push1(1);
         return pc + 1;
     },
     
     // op_iconst_2
     function(cls, env, ins, pc) {
-        env.push(2);
+        env.push1(2);
         return pc + 1;
     },
     
     // op_iconst_3
     function(cls, env, ins, pc) {
-        env.push(3);
+        env.push1(3);
         return pc + 1;
     },
     
     // op_iconst_4
     function(cls, env, ins, pc) {
-        env.push(4);
+        env.push1(4);
         return pc + 1;
     },
     
     // op_iconst_5
     function(cls, env, ins, pc) {
-        env.push(5);
+        env.push1(5);
         return pc + 1;
     },
     
     // op_lconst_0
     function(cls, env, ins, pc) {
-        env.push(0);
+        env.push2(0);
         return pc + 1;
     },
     
     // op_lconst_1
     function(cls, env, ins, pc) {
-        env.push(1);
+        env.push2(1);
         return pc + 1;
     },
     
     // op_fconst_0
     function(cls, env, ins, pc) {
-        env.push(0);
+        env.push1(0);
         return pc + 1;
     },
     
     // op_fconst_1
     function(cls, env, ins, pc) {
-        env.push(1);
+        env.push1(1);
         return pc + 1;
     },
     
     // op_fconst_2
     function(cls, env, ins, pc) {
-        env.push(2);
+        env.push1(2);
         return pc + 1;
     },
     
     // op_dconst_0
     function(cls, env, ins, pc) {
-        env.push(0);
+        env.push2(0);
         return pc + 1;
     },
     
     // op_dconst_1
     function(cls, env, ins, pc) {
-        env.push(1);
+        env.push2(1);
         return pc + 1;
     },
     
     // op_bipush
     function(cls, env, ins, pc) {
-        env.push(ins[1]);
+        env.push1(ins[1]);
         return pc + 1;
     },
     
     // op_sipush
     function(cls, env, ins, pc) {
-        env.push(ins[1]);
+        env.push1(ins[1]);
         return pc + 1;
     },
     
     // op_ldc
     function(cls, env, ins, pc) {
-        env.push(ins[1].value());
+        env.push1(ins[1].value());
         return pc + 1;
     },
     
     // op_ldc_w
     function(cls, env, ins, pc) {
-        env.push(ins[1].value());
+        env.push1(ins[1].value());
         return pc + 1;
     },
     
     // op_ldc2_w
     function(cls, env, ins, pc) {
+        env.push2(ins[1].value());
+        return pc + 1;
     },
     
     // op_iload
     function(cls, env, ins, pc) {
-        env.push(env.local[ins[1]]);
+        env.push1(env.local[ins[1]]);
         return pc + 1;
     },
     
     // op_lload
     function(cls, env, ins, pc) {
-        env.push(env.local[ins[1]]);
+        env.push2(env.local[ins[1]]);
         return pc + 1;
     },
     
     // op_fload
     function(cls, env, ins, pc) {
-        env.push(env.local[ins[1]]);
+        env.push1(env.local[ins[1]]);
         return pc + 1;
     },
     
     // op_dload
     function(cls, env, ins, pc) {
-        env.push(env.local[ins[1]]);
+        env.push2(env.local[ins[1]]);
         return pc + 1;
     },
     
     // op_aload
     function(cls, env, ins, pc) {
-        env.push(env.local[ins[1]]);
+        env.push1(env.local[ins[1]]);
         return pc + 1;
     },
     
@@ -939,7 +957,7 @@ Opcode = [
     function(cls, env, ins, pc) {
         var index = env.pop();
         var a = env.pop();
-        env.push(a.load(index));
+        env.push1(a.load(index));
         return pc + 1;
     },
     
@@ -947,7 +965,7 @@ Opcode = [
     function(cls, env, ins, pc) {
         var index = env.pop();
         var a = env.pop();
-        env.push(a.load(index));
+        env.push2(a.load(index));
         return pc + 1;
     },
     
@@ -955,7 +973,7 @@ Opcode = [
     function(cls, env, ins, pc) {
         var index = env.pop();
         var a = env.pop();
-        env.push(a.load(index));
+        env.push1(a.load(index));
         return pc + 1;
     },
     
@@ -963,7 +981,7 @@ Opcode = [
     function(cls, env, ins, pc) {
         var index = env.pop();
         var a = env.pop();
-        env.push(a.load(index));
+        env.push2(a.load(index));
         return pc + 1;
     },
     
@@ -971,7 +989,7 @@ Opcode = [
     function(cls, env, ins, pc) {
         var index = env.pop();
         var a = env.pop();
-        env.push(a.load(index));
+        env.push1(a.load(index));
         return pc + 1;
     },
     
@@ -979,7 +997,7 @@ Opcode = [
     function(cls, env, ins, pc) {
         var index = env.pop();
         var a = env.pop();
-        env.push(a.load(index));
+        env.push1(a.load(index));
         return pc + 1;
     },
     
@@ -987,7 +1005,7 @@ Opcode = [
     function(cls, env, ins, pc) {
         var index = env.pop();
         var a = env.pop();
-        env.push(a.load(index));
+        env.push1(a.load(index));
         return pc + 1;
     },
     
@@ -995,7 +1013,7 @@ Opcode = [
     function(cls, env, ins, pc) {
         var index = env.pop();
         var a = env.pop();
-        env.push(a.load(index));
+        env.push1(a.load(index));
         return pc + 1;
     },
     
@@ -1197,7 +1215,7 @@ Opcode = [
     
     // op_dup
     function(cls, env, ins, pc) {
-        env.push(env.top());
+        env.push1(env.top());
         return pc + 1;
     },
     
@@ -1227,10 +1245,18 @@ Opcode = [
     
     // op_iadd
     function(cls, env, ins, pc) {
+        var y = env.pop();
+        var x = env.pop();
+        env.push1(x32(x + y));
+        return pc + 1;
     },
     
     // op_ladd
     function(cls, env, ins, pc) {
+        var y = env.pop();
+        var x = env.pop();
+        env.push2(x64(x + y));
+        return pc + 1;
     },
     
     // op_fadd
@@ -1438,11 +1464,11 @@ Opcode = [
         var v2 = env.pop();
         var v1 = env.pop();
         if (v1 == v2) {
-            env.push(0);
+            env.push1(0);
         } else if (v1 > v2) {
-            env.push(1);
+            env.push1(1);
         } else {
-            env.push(-1);
+            env.push1(-1);
         }
         return pc + 1;
     },
@@ -1452,13 +1478,13 @@ Opcode = [
         var v2 = env.pop();
         var v1 = env.pop();
         if (v1 == v2) {
-            env.push(0);
+            env.push1(0);
         } else if (v1 > v2) {
-            env.push(1);
+            env.push1(1);
         } else if (v1 < v2) {
-            env.push(-1);
+            env.push1(-1);
         } else {
-            env.push(-1);
+            env.push1(-1);
         }
         return pc + 1;
     },
@@ -1472,13 +1498,13 @@ Opcode = [
         var v2 = env.pop();
         var v1 = env.pop();
         if (v1 == v2) {
-            env.push(0);
+            env.push1(0);
         } else if (v1 > v2) {
-            env.push(1);
+            env.push1(1);
         } else if (v1 < v2) {
-            env.push(-1);
+            env.push1(-1);
         } else {
-            env.push(-1);
+            env.push1(-1);
         }
         return pc + 1;
     },
@@ -1616,7 +1642,8 @@ Opcode = [
     // op_getstatic
     function(cls, env, ins, pc) {
         var fr = ins[1];
-        env.push(getField(cls.classloader.getClass(fr.classref.name), fr.name_and_type.name));
+        // TODO: cat2 field
+        env.push1(getField(cls.classloader.getClass(fr.classref.name), fr.name_and_type.name));
         return pc + 1;
     },
     
@@ -1637,16 +1664,23 @@ Opcode = [
         var mr = ins[1];
         var nargs = getNargs(mr.name_and_type.descriptor);
         var args = [];
+        var argcats = [];
         while (nargs--) {
+            argcats[nargs] = env.topcat();
             args[nargs] = env.pop();
         }
         var obj = env.pop();
-        var r = callMethod(env, mr.classref, mr.name_and_type.name + mr.name_and_type.descriptor, true, obj, args);
+        var r = callMethod(env, mr.classref, mr.name_and_type.name + mr.name_and_type.descriptor, true, obj, args, argcats);
         if (r instanceof Environment) {
             return r;
         }
         if (mr.name_and_type.descriptor.charAt(mr.name_and_type.descriptor.length - 1) != "V") {
-            env.push(r);
+            if (mr.name_and_type.descriptor.charAt(mr.name_and_type.descriptor.length - 1) == "D"
+             || mr.name_and_type.descriptor.charAt(mr.name_and_type.descriptor.length - 1) == "J") {
+                env.push2(r);
+            } else {
+                env.push1(r);
+            }
         }
         return pc + 1;
     },
@@ -1656,16 +1690,23 @@ Opcode = [
         var mr = ins[1];
         var nargs = getNargs(mr.name_and_type.descriptor);
         var args = [];
+        var argcats = [];
         while (nargs--) {
+            argcats[nargs] = env.topcat();
             args[nargs] = env.pop();
         }
         var obj = env.pop();
-        var r = callMethod(env, cls.classloader.getClass(mr.classref.name), mr.name_and_type.name + mr.name_and_type.descriptor, false, obj, args);
+        var r = callMethod(env, cls.classloader.getClass(mr.classref.name), mr.name_and_type.name + mr.name_and_type.descriptor, false, obj, args, argcats);
         if (r instanceof Environment) {
             return r;
         }
         if (mr.name_and_type.descriptor.charAt(mr.name_and_type.descriptor.length - 1) != "V") {
-            env.push(r);
+            if (mr.name_and_type.descriptor.charAt(mr.name_and_type.descriptor.length - 1) == "D"
+             || mr.name_and_type.descriptor.charAt(mr.name_and_type.descriptor.length - 1) == "J") {
+                env.push2(r);
+            } else {
+                env.push1(r);
+            }
         }
         return pc + 1;
     },
@@ -1685,19 +1726,19 @@ Opcode = [
     // op_new
     function(cls, env, ins, pc) {
         var c = cls.classloader.getClass(ins[1].name);
-        env.push(c.newInstance());
+        env.push1(c.newInstance());
         return pc + 1;
     },
     
     // op_newarray
     function(cls, env, ins, pc) {
-        env.push(new JArray(ins[1], env.pop(), 0));
+        env.push1(new JArray(ins[1], env.pop(), 0));
         return pc + 1;
     },
     
     // op_anewarray
     function(cls, env, ins, pc) {
-        env.push(new JArray(ins[1], env.pop(), null));
+        env.push1(new JArray(ins[1], env.pop(), null));
         return pc + 1;
     },
     
@@ -2675,22 +2716,33 @@ function FileClassLoader(parent) {
 
 function Stack() {
     this.stack = [];
+    this.cat = [];
     this.index = 0;
 
     this.pop = function() {
         return this.stack[--this.index];
     }
 
-    this.push = function(x) {
+    this.push1 = function(x) {
+        this.cat[this.index] = 1;
+        this.stack[this.index++] = x;
+    }
+
+    this.push2 = function(x) {
+        this.cat[this.index] = 2;
         this.stack[this.index++] = x;
     }
 
     this.top = function() {
         return this.stack[this.index - 1];
     }
+
+    this.topcat = function() {
+        return this.cat[this.index - 1];
+    }
 }
 
-function Environment(parent, cls, method, obj, args) {
+function Environment(parent, cls, method, obj, args, argcats) {
     this.parent = parent;
     this.cls = cls;
     this.method = method;
@@ -2701,14 +2753,21 @@ function Environment(parent, cls, method, obj, args) {
     this.pc = 0;
 
     this.local[0] = obj;
-    for (var i = 0; i < args.length; i++) {
-        // TODO: fiddle with offsets for double width args
-        this.local[i + 1] = args[i];
+    var i = 1;
+    for (var a = 0; a < args.length; a++) {
+        this.local[i] = args[a];
+        if (argcats && argcats[a] === 2) {
+            i += 2;
+        } else {
+            i++;
+        }
     }
 
     this.pop = function() { return this.stack.pop(); }
-    this.push = function(x) { this.stack.push(x); }
+    this.push1 = function(x) { this.stack.push1(x); }
+    this.push2 = function(x) { this.stack.push2(x); }
     this.top = function() { return this.stack.top(); }
+    this.topcat = function() { return this.stack.topcat(); }
 }
 
 function ConsolePrintStream() {
@@ -2717,7 +2776,7 @@ function ConsolePrintStream() {
     }
 }
 
-function callMethod(env, cls, method, virtual, obj, args) {
+function callMethod(env, cls, method, virtual, obj, args, argcats) {
     var objcls = obj && virtual ? obj.__jvm_class : cls;
     var m = objcls.method_by_name[method];
     if (m === undefined) {
@@ -2735,7 +2794,7 @@ function callMethod(env, cls, method, virtual, obj, args) {
         }
         throw ("Undefined method: " + method);
     }
-    return new Environment(env, cls, m, obj, args);
+    return new Environment(env, cls, m, obj, args, argcats);
 }
 
 function loop(env) {
@@ -2769,7 +2828,7 @@ jls.out = new ConsolePrintStream();
 var fcl = new FileClassLoader(scl);
 var c = fcl.getClass(arguments[0]);
 //c.dump();
-var env = callMethod(null, c, "main([Ljava/lang/String;)V", false, null, []);
+var env = callMethod(null, c, "main([Ljava/lang/String;)V", false, null, [], []);
 if (!(env instanceof Environment)) {
     throw ("expected Environment, got " + env);
 }
