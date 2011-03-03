@@ -2618,6 +2618,12 @@ function Environment(parent, cls, method, obj, args) {
     this.local = [];
     this.pc = 0;
 
+    this.local[0] = obj;
+    for (var i = 0; i < args.length; i++) {
+        // TODO: fiddle with offsets for double width args
+        this.local[i + 1] = args[i];
+    }
+
     this.pop = function() { return this.stack.pop(); }
     this.push = function(x) { this.stack.push(x); }
     this.top = function() { return this.stack.top(); }
