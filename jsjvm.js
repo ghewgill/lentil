@@ -306,7 +306,7 @@ function DataInput(bytes) {
     };
 
     this.readUnsignedLong = function() {
-        return this.readN(8);
+        return this.readN(8); // TODO: loss of precision
     }
 
     this.readUnsignedShort = function() {
@@ -381,6 +381,62 @@ function x64(x) {
     }
 }
 
+function fromIEEE754Single(x) {
+    if (x === 0x7f800000) {
+        return Number.POSITIVE_INFINITY;
+    } else if (x === 0xff800000) {
+        return Number.NEGATIVE_INFINITY;
+    } else if ((x >= 0x7f800001 && x <= 0x7fffffff) || (x >= 0xff800001 && x <= 0xffffffff)) {
+        return NaN;
+    } else {
+        var s = (x & 0x80000000) ? -1 : 1;
+        var e = (x >> 23) & 0xff;
+        var m = (e == 0) ? (x & 0x7fffff) << 1 : (x & 0x7fffff) | 0x800000;
+        return s * m * Math.pow(2, e - 150);
+    }
+}
+
+function fromIEEE754Double(b) {
+    var b0 = b.charCodeAt(0);
+    var b1 = b.charCodeAt(1);
+    var b2 = b.charCodeAt(2);
+    var b3 = b.charCodeAt(3);
+    var b4 = b.charCodeAt(4);
+    var b5 = b.charCodeAt(5);
+    var b6 = b.charCodeAt(6);
+    var b7 = b.charCodeAt(7);
+    if (b0 === 0x7f && b1 === 0xf0 && b2 === 0 && b3 === 0 && b4 === 0 && b5 === 0 && b6 === 0 && b7 === 0) {
+        return Number.POSITIVE_INFINITY;
+    } else if (b0 === 0xff && b1 === 0xf0 && b2 === 0 && b3 === 0 && b4 === 0 && b5 === 0 && b6 === 0 && b7 === 0) {
+        return Number.NEGATIVE_INFINITY;
+    } else if ((b0 == 0x7f && b1 >= 0xf0) || (b1 == 0xff && b1 >= 0xf0)) {
+        return NaN;
+    } else {
+        var s = (b0 & 0x80) ? -1 : 1;
+        var e = ((b0 & 0x7f) << 4) | (b1 >> 4);
+        var m;
+        if (e == 0) {
+            m = ((b1 & 0x0f) * Math.pow(2, 49)) +
+                ( b2         * Math.pow(2, 41)) +
+                ( b3         * Math.pow(2, 33)) +
+                ( b4         * Math.pow(2, 25)) +
+                ( b5         * Math.pow(2, 17)) +
+                ( b6         * Math.pow(2,  9)) +
+                ( b7         *          2     );
+        } else {
+            m =                Math.pow(2, 52)  +
+                ((b1 & 0x0f) * Math.pow(2, 48)) +
+                ( b2         * Math.pow(2, 40)) +
+                ( b3         * Math.pow(2, 32)) +
+                ( b4         * Math.pow(2, 24)) +
+                ( b5         * Math.pow(2, 16)) +
+                ( b6         * Math.pow(2,  8)) +
+                ( b7                          );
+        }
+        return s * m * Math.pow(2, e - 1075);
+    }
+}
+
 function disassemble1(opcode) {
     var ins = OpcodeName[opcode[0]];
     for (var j = 1; j < opcode.length; j++) {
@@ -415,7 +471,7 @@ function ConstantClass(cls, din) {
 
 function ConstantDouble(cls, din) {
     this.cls = cls;
-    this.bytes = din.readUnsignedLong();
+    this.bytes = fromIEEE754Double(din.readBytes(8));
 
     this.resolve = function() { }
 
@@ -445,7 +501,7 @@ function ConstantFieldref(cls, din) {
 
 function ConstantFloat(cls, din) {
     this.cls = cls;
-    this.bytes = din.readUnsignedInt();
+    this.bytes = fromIEEE754Single(din.readUnsignedInt());
 
     this.resolve = function() { }
 
@@ -1261,6 +1317,10 @@ Opcode = [
     
     // op_fadd
     function(cls, env, ins, pc) {
+        var y = env.pop();
+        var x = env.pop();
+        env.push1(x + y);
+        return pc + 1;
     },
     
     // op_dadd
