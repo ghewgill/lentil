@@ -365,6 +365,22 @@ function s32(data, index) {
     }
 }
 
+function x8(x) {
+    if (x & 0x80) {
+        return -(x & 0x7f);
+    } else {
+        return x;
+    }
+}
+
+function x16(x) {
+    if (x & 0x8000) {
+        return -(x & 0x7fff);
+    } else {
+        return x;
+    }
+}
+
 function x32(x) {
     if (x & 0x80000000) {
         return -(x & 0x7fffffff);
@@ -1325,198 +1341,352 @@ Opcode = [
     
     // op_dadd
     function(cls, env, ins, pc) {
+        var y = env.pop();
+        var x = env.pop();
+        env.push2(x + y);
+        return pc + 1;
     },
     
     // op_isub
     function(cls, env, ins, pc) {
+        var y = env.pop();
+        var x = env.pop();
+        env.push1(x32(x - y));
+        return pc + 1;
     },
     
     // op_lsub
     function(cls, env, ins, pc) {
+        var y = env.pop();
+        var x = env.pop();
+        env.push2(x64(x - y));
+        return pc + 1;
     },
     
     // op_fsub
     function(cls, env, ins, pc) {
+        var y = env.pop();
+        var x = env.pop();
+        env.push1(x - y);
+        return pc + 1;
     },
     
     // op_dsub
     function(cls, env, ins, pc) {
+        var y = env.pop();
+        var x = env.pop();
+        env.push2(x - y);
+        return pc + 1;
     },
     
     // op_imul
     function(cls, env, ins, pc) {
+        var y = env.pop();
+        var x = env.pop();
+        env.push1(x32(x * y));
+        return pc + 1;
     },
     
     // op_lmul
     function(cls, env, ins, pc) {
+        var y = env.pop();
+        var x = env.pop();
+        env.push2(x64(x * y));
+        return pc + 1;
     },
     
     // op_fmul
     function(cls, env, ins, pc) {
+        var y = env.pop();
+        var x = env.pop();
+        env.push1(x * y);
+        return pc + 1;
     },
     
     // op_dmul
     function(cls, env, ins, pc) {
+        var y = env.pop();
+        var x = env.pop();
+        env.push2(x * y);
+        return pc + 1;
     },
     
     // op_idiv
     function(cls, env, ins, pc) {
+        var y = env.pop();
+        var x = env.pop();
+        env.push1(x32(x / y));
+        return pc + 1;
     },
     
     // op_ldiv
     function(cls, env, ins, pc) {
+        var y = env.pop();
+        var x = env.pop();
+        env.push2(x32(x / y));
+        return pc + 1;
     },
     
     // op_fdiv
     function(cls, env, ins, pc) {
+        var y = env.pop();
+        var x = env.pop();
+        env.push1(x / y);
+        return pc + 1;
     },
     
     // op_ddiv
     function(cls, env, ins, pc) {
+        var y = env.pop();
+        var x = env.pop();
+        env.push2(x / y);
+        return pc + 1;
     },
     
     // op_irem
     function(cls, env, ins, pc) {
+        var y = env.pop();
+        var x = env.pop();
+        env.push1(x32(x % y));
+        return pc + 1;
     },
     
     // op_lrem
     function(cls, env, ins, pc) {
+        var y = env.pop();
+        var x = env.pop();
+        env.push2(x64(x % y));
+        return pc + 1;
     },
     
     // op_frem
     function(cls, env, ins, pc) {
+        var y = env.pop();
+        var x = env.pop();
+        env.push1(x % y);
+        return pc + 1;
     },
     
     // op_drem
     function(cls, env, ins, pc) {
+        var y = env.pop();
+        var x = env.pop();
+        env.push2(x % y);
+        return pc + 1;
     },
     
     // op_ineg
     function(cls, env, ins, pc) {
+        env.push1(-env.pop());
+        return pc + 1;
     },
     
     // op_lneg
     function(cls, env, ins, pc) {
+        env.push2(-env.pop());
+        return pc + 1;
     },
     
     // op_fneg
     function(cls, env, ins, pc) {
+        env.push1(-env.pop());
+        return pc + 1;
     },
     
     // op_dneg
     function(cls, env, ins, pc) {
+        env.push2(-env.pop());
+        return pc + 1;
     },
     
     // op_ishl
     function(cls, env, ins, pc) {
+        var y = env.pop();
+        var x = env.pop();
+        env.push1(x << (y & 0x1f));
+        return pc + 1;
     },
     
     // op_lshl
     function(cls, env, ins, pc) {
+        var y = env.pop();
+        var x = env.pop();
+        env.push2(x << (y & 0x1f));
+        return pc + 1;
     },
     
     // op_ishr
     function(cls, env, ins, pc) {
+        var y = env.pop();
+        var x = env.pop();
+        env.push1(x >> (y & 0x1f));
+        return pc + 1;
     },
     
     // op_lshr
     function(cls, env, ins, pc) {
+        var y = env.pop();
+        var x = env.pop();
+        env.push2(x >> (y & 0x1f));
+        return pc + 1;
     },
     
     // op_iushr
     function(cls, env, ins, pc) {
+        var y = env.pop();
+        var x = env.pop();
+        env.push1(x >>> (y & 0x1f));
+        return pc + 1;
     },
     
     // op_lushr
     function(cls, env, ins, pc) {
+        var y = env.pop();
+        var x = env.pop();
+        env.push2(x >>> (y & 0x1f));
+        return pc + 1;
     },
     
     // op_iand
     function(cls, env, ins, pc) {
+        var y = env.pop();
+        var x = env.pop();
+        env.push1(x & y);
+        return pc + 1;
     },
     
     // op_land
     function(cls, env, ins, pc) {
+        var y = env.pop();
+        var x = env.pop();
+        env.push2(x & y);
+        return pc + 1;
     },
     
     // op_ior
     function(cls, env, ins, pc) {
+        var y = env.pop();
+        var x = env.pop();
+        env.push1(x | y);
+        return pc + 1;
     },
     
     // op_lor
     function(cls, env, ins, pc) {
+        var y = env.pop();
+        var x = env.pop();
+        env.push2(x | y);
+        return pc + 1;
     },
     
     // op_ixor
     function(cls, env, ins, pc) {
+        var y = env.pop();
+        var x = env.pop();
+        env.push1(x ^ y);
+        return pc + 1;
     },
     
     // op_lxor
     function(cls, env, ins, pc) {
+        var y = env.pop();
+        var x = env.pop();
+        env.push2(x ^ y);
+        return pc + 1;
     },
     
     // op_iinc
     function(cls, env, ins, pc) {
+        env.local[ins[1]] += ins[2];
+        return pc + 1;
     },
     
     // op_i2l
     function(cls, env, ins, pc) {
+        env.push2(env.pop());
+        return pc + 1;
     },
     
     // op_i2f
     function(cls, env, ins, pc) {
+        return pc + 1;
     },
     
     // op_i2d
     function(cls, env, ins, pc) {
+        env.push2(env.pop());
+        return pc + 1;
     },
     
     // op_l2i
     function(cls, env, ins, pc) {
+        env.push1(x32(env.pop() & 0xffffffff));
+        return pc + 1;
     },
     
     // op_l2f
     function(cls, env, ins, pc) {
+        env.push1(env.pop());
+        return pc + 1;
     },
     
     // op_l2d
     function(cls, env, ins, pc) {
+        return pc + 1;
     },
     
     // op_f2i
     function(cls, env, ins, pc) {
+        env.push1(env.pop() | 0);
+        return pc + 1;
     },
     
     // op_f2l
     function(cls, env, ins, pc) {
+        env.push2(env.pop() | 0);
+        return pc + 1;
     },
     
     // op_f2d
     function(cls, env, ins, pc) {
+        env.push2(env.pop());
+        return pc + 1;
     },
     
     // op_d2i
     function(cls, env, ins, pc) {
+        env.push1(env.pop() | 0);
+        return pc + 1;
     },
     
     // op_d2l
     function(cls, env, ins, pc) {
+        env.push2(env.pop() | 0);
+        return pc + 1;
     },
     
     // op_d2f
     function(cls, env, ins, pc) {
+        env.push1(env.pop());
+        return pc + 1;
     },
     
     // op_i2b
     function(cls, env, ins, pc) {
+        env.push1(x8(env.pop() & 0xff));
+        return pc + 1;
     },
     
     // op_i2c
     function(cls, env, ins, pc) {
+        env.push1(env.pop() & 0xffff);
+        return pc + 1;
     },
     
     // op_i2s
     function(cls, env, ins, pc) {
+        env.push1(x16(env.pop() & 0xffff));
+        return pc + 1;
     },
     
     // op_lcmp
@@ -2354,7 +2524,7 @@ Class.prototype.decodeBytecode = function(code) {
                 ins = [op_lxor];
                 break;
             case op_iinc:
-                ins = [op_iinc, code.charCodeAt(i), s8(code, i+1)];
+                ins = [op_iinc, code.charCodeAt(i+1), s8(code, i+2)];
                 i += 2;
                 break;
             case op_i2l:
