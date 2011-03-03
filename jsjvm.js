@@ -1721,6 +1721,18 @@ Opcode = [
     
     // op_fcmpg
     function(cls, env, ins, pc) {
+        var v2 = env.pop();
+        var v1 = env.pop();
+        if (v1 == v2) {
+            env.push1(0);
+        } else if (v1 > v2) {
+            env.push1(1);
+        } else if (v1 < v2) {
+            env.push1(-1);
+        } else {
+            env.push1(1);
+        }
+        return pc + 1;
     },
     
     // op_dcmpl
@@ -1741,6 +1753,18 @@ Opcode = [
     
     // op_dcmpg
     function(cls, env, ins, pc) {
+        var v2 = env.pop();
+        var v1 = env.pop();
+        if (v1 == v2) {
+            env.push1(0);
+        } else if (v1 > v2) {
+            env.push1(1);
+        } else if (v1 < v2) {
+            env.push1(-1);
+        } else {
+            env.push1(1);
+        }
+        return pc + 1;
     },
     
     // op_ifeq
@@ -1762,24 +1786,40 @@ Opcode = [
     
     // op_iflt
     function(cls, env, ins, pc) {
+        if (env.pop() < 0) {
+            return ins[1];
+        }
+        return pc + 1;
     },
     
     // op_ifge
     function(cls, env, ins, pc) {
+        if (env.pop() >= 0) {
+            return ins[1];
+        }
+        return pc + 1;
     },
     
     // op_ifgt
     function(cls, env, ins, pc) {
+        if (env.pop() > 0) {
+            return ins[1];
+        }
+        return pc + 1;
     },
     
     // op_ifle
     function(cls, env, ins, pc) {
+        if (env.pop() <= 0) {
+            return ins[1];
+        }
+        return pc + 1;
     },
     
     // op_if_icmpeq
     function(cls, env, ins, pc) {
-        var x = env.pop();
         var y = env.pop();
+        var x = env.pop();
         if (x == y) {
             return ins[1];
         }
@@ -1788,34 +1828,77 @@ Opcode = [
     
     // op_if_icmpne
     function(cls, env, ins, pc) {
+        var y = env.pop();
+        var x = env.pop();
+        if (x != y) {
+            return ins[1];
+        }
+        return pc + 1;
     },
     
     // op_if_icmplt
     function(cls, env, ins, pc) {
+        var y = env.pop();
+        var x = env.pop();
+        if (x < y) {
+            return ins[1];
+        }
+        return pc + 1;
     },
     
     // op_if_icmpge
     function(cls, env, ins, pc) {
+        var y = env.pop();
+        var x = env.pop();
+        if (x >= y) {
+            return ins[1];
+        }
+        return pc + 1;
     },
     
     // op_if_icmpgt
     function(cls, env, ins, pc) {
+        var y = env.pop();
+        var x = env.pop();
+        if (x > y) {
+            return ins[1];
+        }
+        return pc + 1;
     },
     
     // op_if_icmple
     function(cls, env, ins, pc) {
+        var y = env.pop();
+        var x = env.pop();
+        if (x <= y) {
+            return ins[1];
+        }
+        return pc + 1;
     },
     
     // op_if_acmpeq
     function(cls, env, ins, pc) {
+        var y = env.pop();
+        var x = env.pop();
+        if (x === y) {
+            return ins[1];
+        }
+        return pc + 1;
     },
     
     // op_if_acmpne
     function(cls, env, ins, pc) {
+        var y = env.pop();
+        var x = env.pop();
+        if (x !== y) {
+            return ins[1];
+        }
+        return pc + 1;
     },
     
     // op_goto
     function(cls, env, ins, pc) {
+        return ins[1];
     },
     
     // op_jsr
@@ -1828,10 +1911,21 @@ Opcode = [
     
     // op_tableswitch
     function(cls, env, ins, pc) {
+        var x = env.pop();
+        if (x >= ins[2] && x <= ins[3]) {
+            return ins[4 + x - ins[2]];
+        }
+        return ins[1];
     },
     
     // op_lookupswitch
     function(cls, env, ins, pc) {
+        var x = env.pop();
+        var t = ins[2][x];
+        if (t !== undefined) {
+            return t;
+        }
+        return ins[1];
     },
     
     // op_ireturn
@@ -1900,7 +1994,7 @@ Opcode = [
             args[nargs] = env.pop();
         }
         var obj = env.pop();
-        var r = callMethod(env, mr.classref, mr.name_and_type.name + mr.name_and_type.descriptor, true, obj, args, argcats);
+        var r = callMethod(env, mr.classref.value(), mr.name_and_type.name + mr.name_and_type.descriptor, true, obj, args, argcats);
         if (r instanceof Environment) {
             return r;
         }
