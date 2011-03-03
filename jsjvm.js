@@ -24,6 +24,15 @@ var ACC_INTERFACE = 0x0200;
 var ACC_ABSTRACT  = 0x0400;
 var ACC_STRICT    = 0x0800;
 
+var T_BOOLEAN =  4;
+var T_CHAR    =  5;
+var T_FLOAT   =  6;
+var T_DOUBLE  =  7;
+var T_BYTE    =  8;
+var T_SHORT   =  9;
+var T_INT     = 10;
+var T_LONG    = 11;
+
 var op_nop              = 0;
 var op_aconst_null      = 1;
 var op_iconst_m1        = 2;
@@ -2505,6 +2514,23 @@ Class.prototype.toString = function() {
 
 function getField(obj, name) {
     return obj[name];
+}
+
+function JArray(type, size, def) {
+    this.a = new Array(size);
+    for (var i = 0; i < size; i++) {
+        this.a[i] = def;
+    }
+
+    this.load = function(index) {
+        // TODO: bounds checking
+        return this.a[index];
+    }
+
+    this.store = function(index, value) {
+        // TODO: bounds checking
+        this.a[index] = value;
+    }
 }
 
 function java_lang_String() {
