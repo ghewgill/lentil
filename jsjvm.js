@@ -1563,7 +1563,7 @@ Opcode = [
             args[nargs] = env.pop();
         }
         var obj = env.pop();
-        var r = callMethod(env, mr.classref, mr.name_and_type.name + mr.name_and_type.descriptor, obj, args);
+        var r = callMethod(env, mr.classref, mr.name_and_type.name + mr.name_and_type.descriptor, true, obj, args);
         if (r instanceof Environment) {
             return r;
         }
@@ -1582,7 +1582,7 @@ Opcode = [
             args[nargs] = env.pop();
         }
         var obj = env.pop();
-        var r = callMethod(env, cls.classloader.getClass(mr.classref.name), mr.name_and_type.name + mr.name_and_type.descriptor, obj, args);
+        var r = callMethod(env, cls.classloader.getClass(mr.classref.name), mr.name_and_type.name + mr.name_and_type.descriptor, false, obj, args);
         if (r instanceof Environment) {
             return r;
         }
@@ -2629,8 +2629,8 @@ function ConsolePrintStream() {
     }
 }
 
-function callMethod(env, cls, method, obj, args) {
-    var objcls = obj ? obj.__jvm_class : cls;
+function callMethod(env, cls, method, virtual, obj, args) {
+    var objcls = obj && virtual ? obj.__jvm_class : cls;
     var m = objcls.method_by_name[method];
     if (m === undefined) {
         var name = method.substr(0, method.indexOf("("));
@@ -2681,7 +2681,7 @@ jls.out = new ConsolePrintStream();
 var fcl = new FileClassLoader(scl);
 var c = fcl.getClass(arguments[0]);
 //c.dump();
-var env = callMethod(null, c, "main([Ljava/lang/String;)V", null, []);
+var env = callMethod(null, c, "main([Ljava/lang/String;)V", false, null, []);
 if (!(env instanceof Environment)) {
     throw ("expected Environment, got " + env);
 }
