@@ -473,7 +473,8 @@ function ConstantClass(cls, din) {
     this.name_index = din.readUnsignedShort();
 
     this.resolve = function() {
-        this.name = this.cls.constant_pool[this.name_index].toString();
+        this.name = this.cls.constant_pool[this.name_index].resolve().value();
+        return this;
     }
 
     this.toString = function() {
@@ -489,7 +490,9 @@ function ConstantDouble(cls, din) {
     this.cls = cls;
     this.bytes = fromIEEE754Double(din.readBytes(8));
 
-    this.resolve = function() { }
+    this.resolve = function() {
+        return this;
+    }
 
     this.toString = function() {
         return this.bytes;
@@ -506,12 +509,13 @@ function ConstantFieldref(cls, din) {
     this.name_and_type_index = din.readUnsignedShort();
 
     this.resolve = function() {
-        this.classref = this.cls.constant_pool[this.class_index];
-        this.name_and_type = this.cls.constant_pool[this.name_and_type_index];
+        this.classname = this.cls.constant_pool[this.class_index].resolve().name;
+        this.name_and_type = this.cls.constant_pool[this.name_and_type_index].resolve();
+        return this;
     }
 
     this.toString = function() {
-        return "<fieldref " + this.classref + " " + this.name_and_type + ">";
+        return "<fieldref " + this.classname + " " + this.name_and_type + ">";
     }
 }
 
@@ -519,7 +523,9 @@ function ConstantFloat(cls, din) {
     this.cls = cls;
     this.bytes = fromIEEE754Single(din.readUnsignedInt());
 
-    this.resolve = function() { }
+    this.resolve = function() {
+        return this;
+    }
 
     this.toString = function() {
         return this.bytes;
@@ -534,7 +540,9 @@ function ConstantInteger(cls, din) {
     this.cls = cls;
     this.bytes = din.readUnsignedInt();
 
-    this.resolve = function() { }
+    this.resolve = function() {
+        return this;
+    }
 
     this.toString = function() {
         return this.bytes;
@@ -551,12 +559,13 @@ function ConstantInterfaceMethodref(cls, din) {
     this.name_and_type_index = din.readUnsignedShort();
 
     this.resolve = function() {
-        this.classref = this.cls.constant_pool[this.class_index];
-        this.name_and_type = this.cls.constant_pool[this.name_and_type_index];
+        this.classname = this.cls.constant_pool[this.class_index].resolve().name;
+        this.name_and_type = this.cls.constant_pool[this.name_and_type_index].resolve();
+        return this;
     }
 
     this.toString = function() {
-        return "<interfacemethodref " + this.classref + " " + this.name_and_type + ">";
+        return "<interfacemethodref " + this.classname + " " + this.name_and_type + ">";
     }
 }
 
@@ -564,7 +573,9 @@ function ConstantLong(cls, din) {
     this.cls = cls;
     this.bytes = din.readUnsignedLong();
 
-    this.resolve = function() { }
+    this.resolve = function() {
+        return this;
+    }
 
     this.toString = function() {
         return this.bytes;
@@ -581,12 +592,13 @@ function ConstantMethodref(cls, din) {
     this.name_and_type_index = din.readUnsignedShort();
 
     this.resolve = function() {
-        this.classref = this.cls.constant_pool[this.class_index];
-        this.name_and_type = this.cls.constant_pool[this.name_and_type_index];
+        this.classname = this.cls.constant_pool[this.class_index].resolve().name;
+        this.name_and_type = this.cls.constant_pool[this.name_and_type_index].resolve();
+        return this;
     }
 
     this.toString = function() {
-        return "<methodref " + this.classref + " " + this.name_and_type + ">";
+        return "<methodref " + this.classname + " " + this.name_and_type + ">";
     }
 }
 
@@ -596,8 +608,9 @@ function ConstantNameAndType(cls, din) {
     this.descriptor_index = din.readUnsignedShort();
 
     this.resolve = function() {
-        this.name = this.cls.constant_pool[this.name_index].toString();
-        this.descriptor = this.cls.constant_pool[this.descriptor_index].toString();
+        this.name = this.cls.constant_pool[this.name_index].resolve().value();
+        this.descriptor = this.cls.constant_pool[this.descriptor_index].resolve().value();
+        return this;
     }
 
     this.toString = function() {
@@ -610,7 +623,8 @@ function ConstantString(cls, din) {
     this.string_index = din.readUnsignedShort();
 
     this.resolve = function() {
-        this.string = this.cls.constant_pool[this.string_index].toString();
+        this.string = this.cls.constant_pool[this.string_index].resolve().value();
+        return this;
     }
 
     this.toString = function() {
@@ -626,9 +640,15 @@ function ConstantUtf8(cls, din) {
     this.length = din.readUnsignedShort();
     this.bytes = din.readBytes(this.length);
 
-    this.resolve = function() {}
+    this.resolve = function() {
+        return this;
+    }
 
     this.toString = function() {
+        return "<utf8 " + this.bytes + ">";
+    }
+
+    this.value = function() {
         return this.bytes;
     }
 }
@@ -701,14 +721,14 @@ function Attribute(cls, din) {
     this.attribute_length = din.readUnsignedInt();
     this.info = din.readBytes(this.attribute_length);
 
-    var name = cls.constant_pool[this.attribute_name_index].toString();
+    var name = cls.constant_pool[this.attribute_name_index].value();
     if (name in AttributeDecoder) {
         this.attr = new AttributeDecoder[name](cls, new DataInput(this.info));
     } else {
         //print("Ignored attribute:", name);
     }
 
-    this.attribute_name = cls.constant_pool[this.attribute_name_index].toString();
+    this.attribute_name = cls.constant_pool[this.attribute_name_index].value();
 
     this.dump = function() {
         print("    attribute_name:", this.attribute_name);
@@ -730,10 +750,13 @@ function FieldInfo(cls, din) {
         this.attributes[i] = new Attribute(cls, din);
     }
 
+    this.name = cls.constant_pool[this.name_index].value();
+    this.descriptor = cls.constant_pool[this.descriptor_index].value();
+
     this.dump = function() {
         print("  access_flags:", this.access_flags);
-        print("  name_index:", this.name_index);
-        print("  descriptor_index:", this.descriptor_index);
+        print("  name:", this.name_index, this.name);
+        print("  descriptor:", this.descriptor_index, this.descriptor);
         print("  attributes_count:", this.attributes_count);
         for (var i = 0; i < this.attributes_count; i++) {
             this.attributes[i].dump();
@@ -755,8 +778,8 @@ function MethodInfo(cls, din) {
         this.attribute_by_name[a.attribute_name] = a;
     }
 
-    this.name = cls.constant_pool[this.name_index].toString();
-    this.descriptor = cls.constant_pool[this.descriptor_index].toString();
+    this.name = cls.constant_pool[this.name_index].value();
+    this.descriptor = cls.constant_pool[this.descriptor_index].value();
     this.full_name = this.name + this.descriptor;
 
     this.dump = function() {
@@ -1967,7 +1990,7 @@ Opcode = [
     function(cls, env, ins, pc) {
         var fr = ins[1];
         // TODO: cat2 field
-        env.push1(getField(cls.classloader.getClass(fr.classref.name), fr.name_and_type.name));
+        env.push1(cls.classloader.getClass(fr.classname).statics[fr.name_and_type.name]);
         return pc + 1;
     },
     
@@ -1994,7 +2017,7 @@ Opcode = [
             args[nargs] = env.pop();
         }
         var obj = env.pop();
-        var r = callMethod(env, mr.classref.value(), mr.name_and_type.name + mr.name_and_type.descriptor, true, obj, args, argcats);
+        var r = callMethod(env, cls.classloader.getClass(mr.classname), mr.name_and_type.name + mr.name_and_type.descriptor, true, obj, args, argcats);
         if (r instanceof Environment) {
             return r;
         }
@@ -2020,7 +2043,7 @@ Opcode = [
             args[nargs] = env.pop();
         }
         var obj = env.pop();
-        var r = callMethod(env, cls.classloader.getClass(mr.classref.name), mr.name_and_type.name + mr.name_and_type.descriptor, false, obj, args, argcats);
+        var r = callMethod(env, cls.classloader.getClass(mr.classname), mr.name_and_type.name + mr.name_and_type.descriptor, false, obj, args, argcats);
         if (r instanceof Environment) {
             return r;
         }
