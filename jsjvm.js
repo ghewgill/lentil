@@ -812,6 +812,24 @@ function getNargs(descriptor) {
     return nargs;
 }
 
+function defaultValue(descriptor) {
+    return 0;
+    switch (descriptor.charAt(0)) {
+        case 'B': return 0;
+        case 'C': return 0;
+        case 'D': return 0;
+        case 'F': return 0;
+        case 'I': return 0;
+        case 'J': return 0;
+        case 'S': return 0;
+        case 'Z': return 0;
+        case '[': return null;
+        case 'L': return null;
+        default:
+            throw ("Unknown descriptor character: " + descriptor);
+    }
+}
+
 Opcode = [
     
     // op_nop
@@ -1996,14 +2014,27 @@ Opcode = [
     
     // op_putstatic
     function(cls, env, ins, pc) {
+        var fr = ins[1];
+        cls.classloader.getClass(fr.classname).statics[fr.name_and_type.name] = env.pop();
+        return pc + 1;
     },
     
     // op_getfield
     function(cls, env, ins, pc) {
+        var fr = ins[1];
+        var obj = env.pop();
+        // TODO: cat2 field
+        env.push1(obj[fr.name_and_type.name]);
+        return pc + 1;
     },
     
     // op_putfield
     function(cls, env, ins, pc) {
+        var fr = ins[1];
+        var x = env.pop();
+        var obj = env.pop();
+        obj[fr.name_and_type.name] = x;
+        return pc + 1;
     },
     
     // op_invokevirtual
@@ -2017,7 +2048,7 @@ Opcode = [
             args[nargs] = env.pop();
         }
         var obj = env.pop();
-        var r = callMethod(env, cls.classloader.getClass(mr.classname), mr.name_and_type.name + mr.name_and_type.descriptor, true, obj, args, argcats);
+        var r = callMethod(env, cls.classloader.getClass(mr.classname), mr.name_and_type.name + mr.name_and_type.descriptor, 0, obj, args, argcats);
         if (r instanceof Environment) {
             return r;
         }
@@ -2043,7 +2074,7 @@ Opcode = [
             args[nargs] = env.pop();
         }
         var obj = env.pop();
-        var r = callMethod(env, cls.classloader.getClass(mr.classname), mr.name_and_type.name + mr.name_and_type.descriptor, false, obj, args, argcats);
+        var r = callMethod(env, cls.classloader.getClass(mr.classname), mr.name_and_type.name + mr.name_and_type.descriptor, ACC_PRIVATE, obj, args, argcats);
         if (r instanceof Environment) {
             return r;
         }
@@ -2060,10 +2091,53 @@ Opcode = [
     
     // op_invokestatic
     function(cls, env, ins, pc) {
+        var mr = ins[1];
+        var nargs = getNargs(mr.name_and_type.descriptor);
+        var args = [];
+        var argcats = [];
+        while (nargs--) {
+            argcats[nargs] = env.topcat();
+            args[nargs] = env.pop();
+        }
+        var r = callMethod(env, cls.classloader.getClass(mr.classname), mr.name_and_type.name + mr.name_and_type.descriptor, ACC_STATIC, null, args, argcats);
+        if (r instanceof Environment) {
+            return r;
+        }
+        if (mr.name_and_type.descriptor.charAt(mr.name_and_type.descriptor.length - 1) != "V") {
+            if (mr.name_and_type.descriptor.charAt(mr.name_and_type.descriptor.length - 1) == "D"
+             || mr.name_and_type.descriptor.charAt(mr.name_and_type.descriptor.length - 1) == "J") {
+                env.push2(r);
+            } else {
+                env.push1(r);
+            }
+        }
+        return pc + 1;
     },
     
     // op_invokeinterface
     function(cls, env, ins, pc) {
+        var mr = ins[1];
+        var nargs = getNargs(mr.name_and_type.descriptor);
+        var args = [];
+        var argcats = [];
+        while (nargs--) {
+            argcats[nargs] = env.topcat();
+            args[nargs] = env.pop();
+        }
+        var obj = env.pop();
+        var r = callMethod(env, cls.classloader.getClass(mr.classname), mr.name_and_type.name + mr.name_and_type.descriptor, 0, obj, args, argcats);
+        if (r instanceof Environment) {
+            return r;
+        }
+        if (mr.name_and_type.descriptor.charAt(mr.name_and_type.descriptor.length - 1) != "V") {
+            if (mr.name_and_type.descriptor.charAt(mr.name_and_type.descriptor.length - 1) == "D"
+             || mr.name_and_type.descriptor.charAt(mr.name_and_type.descriptor.length - 1) == "J") {
+                env.push2(r);
+            } else {
+                env.push1(r);
+            }
+        }
+        return pc + 1;
     },
 
     // op_186
@@ -2091,6 +2165,8 @@ Opcode = [
     
     // op_arraylength
     function(cls, env, ins, pc) {
+        env.push1(env.pop().a.length);
+        return pc + 1;
     },
     
     // op_athrow
@@ -2131,6 +2207,10 @@ Opcode = [
     
     // op_ifnonnull
     function(cls, env, ins, pc) {
+        if (env.pop() !== null) {
+            return ins[1];
+        }
+        return pc + 1;
     },
     
     // op_goto_w
@@ -2226,7 +2306,14 @@ function Class(classloader, bytes) {
         this.interfaces[i] = this.constant_pool[this.interfaces[i]];
     }
 
-    this["$assertionsDisabled"] = !this.desiredAssertionStatus();
+    this.statics = [];
+    for (var i = 0; i < this.fields_count; i++) {
+        var f = this.fields[i];
+        if (f.access_flags & ACC_STATIC) {
+            this.statics[f.name] = defaultValue(f.descriptor);
+        }
+    }
+    this.statics["$assertionsDisabled"] = !this.desiredAssertionStatus();
 }
 
 Class.prototype.desiredAssertionStatus = function() {
@@ -2862,7 +2949,7 @@ Class.prototype.decodeBytecode = function(code) {
                 break;
             case op_invokeinterface:
                 ins = [op_invokeinterface, this.constant_pool[u16(code, i+1)]];
-                i += 2;
+                i += 4;
                 break;
             case op_new:
                 ins = [op_new, this.constant_pool[u16(code, i+1)]];
@@ -2975,15 +3062,17 @@ Class.prototype.newInstance = function() {
     var cls = this;
     return new function() {
         this.__jvm_class = cls;
+        for (var i = 0; i < cls.fields_count; i++) {
+            var f = cls.fields[i];
+            if ((f.access_flags & ACC_STATIC) == 0) {
+                this[f.name] = defaultValue(f.descriptor);
+            }
+        }
     };
 }
 
 Class.prototype.toString = function() {
     return "<Class " + this.this_class + ">";
-}
-
-function getField(obj, name) {
-    return obj[name];
 }
 
 function JArray(type, size, def) {
@@ -3089,7 +3178,7 @@ function Stack() {
     }
 }
 
-function Environment(parent, cls, method, obj, args, argcats) {
+function Environment(parent, cls, method, methodtype, obj, args, argcats) {
     this.parent = parent;
     this.cls = cls;
     this.method = method;
@@ -3099,8 +3188,11 @@ function Environment(parent, cls, method, obj, args, argcats) {
     this.local = [];
     this.pc = 0;
 
-    this.local[0] = obj;
-    var i = 1;
+    var i = 0;
+    if (methodtype !== ACC_STATIC) {
+        this.local[0] = obj;
+        i++;
+    }
     for (var a = 0; a < args.length; a++) {
         this.local[i] = args[a];
         if (argcats && argcats[a] === 2) {
@@ -3123,8 +3215,8 @@ function ConsolePrintStream() {
     }
 }
 
-function callMethod(env, cls, method, virtual, obj, args, argcats) {
-    var objcls = obj && virtual ? obj.__jvm_class : cls;
+function callMethod(env, cls, method, methodtype, obj, args, argcats) {
+    var objcls = obj && methodtype == 0 ? obj.__jvm_class : cls;
     var m = objcls.method_by_name[method];
     if (m === undefined) {
         var name = method.substr(0, method.indexOf("("));
@@ -3140,8 +3232,10 @@ function callMethod(env, cls, method, virtual, obj, args, argcats) {
             return obj[name].apply(obj, jsargs);
         }
         throw ("Undefined method: " + method);
+    } else if (m.access_flags & ACC_NATIVE) {
+        print("native", objcls, m.name);
     }
-    return new Environment(env, cls, m, obj, args, argcats);
+    return new Environment(env, cls, m, methodtype, obj, args, argcats);
 }
 
 function loop(env) {
@@ -3175,7 +3269,7 @@ jls.out = new ConsolePrintStream();
 var fcl = new FileClassLoader(scl);
 var c = fcl.getClass(arguments[0]);
 //c.dump();
-var env = callMethod(null, c, "main([Ljava/lang/String;)V", false, null, [], []);
+var env = callMethod(null, c, "main([Ljava/lang/String;)V", ACC_STATIC, null, [], []);
 if (!(env instanceof Environment)) {
     throw ("expected Environment, got " + env);
 }
