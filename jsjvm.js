@@ -278,6 +278,14 @@ OpcodeName = [
     "op_203", "op_204", "op_205", "op_206", "op_207", "ret_w"
 ];
 
+NativeMethod = {
+    "java/lang/VMThrowable": {
+        "fillInStackTrace(Ljava/lang/Throwable;)Ljava/lang/VMThrowable;": function(t) {
+            return null;
+        }
+    }
+}
+
 function ClassError(msg) {
     this.name = "ClassError";
     this.message = msg;
@@ -659,6 +667,12 @@ function ExceptionTableEntry(din) {
     this.handler_pc = din.readUnsignedShort();
     this.catch_type = din.readUnsignedShort();
 
+    this.fixup = function(pc_to_index) {
+        this.start_pc = pc_to_index[this.start_pc];
+        this.end_pc = pc_to_index[this.end_pc];
+        this.handler_pc = pc_to_index[this.handler_pc];
+    }
+
     this.dump = function() {
         print("      start_pc:", this.start_pc);
         print("      end_pc:", this.end_pc);
@@ -678,12 +692,15 @@ var AttributeDecoder = {
         this.exception_table = [];
         for (var i = 0; i < this.exception_table_length; i++) {
             this.exception_table[i] = new ExceptionTableEntry(din);
+            this.exception_table[i].fixup(cls.pc_to_index);
         }
         this.attributes_count = din.readUnsignedShort();
         this.attributes = [];
         for (var i = 0; i < this.attributes_count; i++) {
             this.attributes[i] = new Attribute(cls, din);
         }
+
+        cls.pc_to_index = undefined;
 
         this.dump = function() {
             print("    max_stack:", this.max_stack);
@@ -2171,6 +2188,21 @@ Opcode = [
     
     // op_athrow
     function(cls, env, ins, pc) {
+        var x = env.pop();
+        while (env != null) {
+            var et = env.method.attribute_by_name["Code"].attr.exception_table;
+            for (var i = 0; i < et.length; i++) {
+                // TODO: check instance type too!
+                if (pc >= et[i].start_pc && pc < et[i].end_pc) {
+                    env.push1(x);
+                    env.pc = et[i].handler_pc;
+                    return env;
+                }
+            }
+            env = env.parent;
+            pc = env.pc;
+        }
+        throw ("Unhandled exception");
     },
     
     // op_checkcast
@@ -2322,10 +2354,10 @@ Class.prototype.desiredAssertionStatus = function() {
 
 Class.prototype.decodeBytecode = function(code) {
     var r = [];
-    var pc_to_index = [];
+    this.pc_to_index = [];
     var fixup = [];
     for (var i = 0; i < code.length; i++) {
-        pc_to_index[i] = r.length;
+        this.pc_to_index[i] = r.length;
         var ins;
         switch (code.charCodeAt(i)) {
             case op_nop:
@@ -3010,19 +3042,19 @@ Class.prototype.decodeBytecode = function(code) {
     for (var i = 0; i < fixup.length; i++) {
         switch (r[fixup[i]][0]) {
             case op_tableswitch:
-                r[fixup[i]][1] = pc_to_index[r[fixup[i]][1]];
+                r[fixup[i]][1] = this.pc_to_index[r[fixup[i]][1]];
                 for (var j = 4; j < r[fixup[i]].length; j++) {
-                    r[fixup[i]][j] = pc_to_index[r[fixup[i]][j]];
+                    r[fixup[i]][j] = this.pc_to_index[r[fixup[i]][j]];
                 }
                 break;
             case op_lookupswitch:
-                r[fixup[i]][1] = pc_to_index[r[fixup[i]][1]];
+                r[fixup[i]][1] = this.pc_to_index[r[fixup[i]][1]];
                 for (j in r[fixup[i]][2]) {
-                    r[fixup[i]][2][j] = pc_to_index[r[fixup[i]][2][j]];
+                    r[fixup[i]][2][j] = this.pc_to_index[r[fixup[i]][2][j]];
                 }
                 break;
             default:
-                r[fixup[i]][1] = pc_to_index[r[fixup[i]][1]];
+                r[fixup[i]][1] = this.pc_to_index[r[fixup[i]][1]];
                 break;
         }
     }
@@ -3233,7 +3265,20 @@ function callMethod(env, cls, method, methodtype, obj, args, argcats) {
         }
         throw ("Undefined method: " + method);
     } else if (m.access_flags & ACC_NATIVE) {
-        print("native", objcls, m.name);
+        var f = NativeMethod[objcls.this_class.name][method];
+        if (f !== undefined) {
+            var jsargs = [];
+            for (var i = 0; i < args.length; i++) {
+                if (args[i].classref === java_lang_String) {
+                    jsargs[i] = args[i].s;
+                } else {
+                    jsargs[i] = args[i];
+                }
+            }
+            return f.apply(obj, jsargs);
+        } else {
+            throw ("Unknown native method: " + objcls + " " + m.name);
+        }
     }
     return new Environment(env, cls, m, methodtype, obj, args, argcats);
 }
