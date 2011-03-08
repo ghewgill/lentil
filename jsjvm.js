@@ -238,44 +238,44 @@ var op_breakpoint       = 202;
 var op_ret_w            = 209;
 
 OpcodeName = [
-    "op_nop", "op_aconst_null", "op_iconst_m1", "op_iconst_0", "op_iconst_1",
-    "op_iconst_2", "op_iconst_3", "op_iconst_4", "op_iconst_5", "op_lconst_0",
-    "op_lconst_1", "op_fconst_0", "op_fconst_1", "op_fconst_2", "op_dconst_0",
-    "op_dconst_1", "op_bipush", "op_sipush", "op_ldc", "op_ldc_w", "op_ldc2_w",
-    "op_iload", "op_lload", "op_fload", "op_dload", "op_aload", "op_iload_0",
-    "op_iload_1", "op_iload_2", "op_iload_3", "op_lload_0", "op_lload_1",
-    "op_lload_2", "op_lload_3", "op_fload_0", "op_fload_1", "op_fload_2",
-    "op_fload_3", "op_dload_0", "op_dload_1", "op_dload_2", "op_dload_3",
-    "op_aload_0", "op_aload_1", "op_aload_2", "op_aload_3", "op_iaload",
-    "op_laload", "op_faload", "op_daload", "op_aaload", "op_baload", "op_caload",
-    "op_saload", "op_istore", "op_lstore", "op_fstore", "op_dstore", "op_astore",
-    "op_istore_0", "op_istore_1", "op_istore_2", "op_istore_3", "op_lstore_0",
-    "op_lstore_1", "op_lstore_2", "op_lstore_3", "op_fstore_0", "op_fstore_1",
-    "op_fstore_2", "op_fstore_3", "op_dstore_0", "op_dstore_1", "op_dstore_2",
-    "op_dstore_3", "op_astore_0", "op_astore_1", "op_astore_2", "op_astore_3",
-    "op_iastore", "op_lastore", "op_fastore", "op_dastore", "op_aastore",
-    "op_bastore", "op_castore", "op_sastore", "op_pop", "op_pop2", "op_dup",
-    "op_dup_x1", "op_dup_x2", "op_dup2", "op_dup2_x1", "op_dup2_x2", "op_swap",
-    "op_iadd", "op_ladd", "op_fadd", "op_dadd", "op_isub", "op_lsub", "op_fsub",
-    "op_dsub", "op_imul", "op_lmul", "op_fmul", "op_dmul", "op_idiv", "op_ldiv",
-    "op_fdiv", "op_ddiv", "op_irem", "op_lrem", "op_frem", "op_drem", "op_ineg",
-    "op_lneg", "op_fneg", "op_dneg", "op_ishl", "op_lshl", "op_ishr", "op_lshr",
-    "op_iushr", "op_lushr", "op_iand", "op_land", "op_ior", "op_lor", "op_ixor",
-    "op_lxor", "op_iinc", "op_i2l", "op_i2f", "op_i2d", "op_l2i", "op_l2f",
-    "op_l2d", "op_f2i", "op_f2l", "op_f2d", "op_d2i", "op_d2l", "op_d2f",
-    "op_i2b", "op_i2c", "op_i2s", "op_lcmp", "op_fcmpl",
-    "op_fcmpg", "op_dcmpl", "op_dcmpg", "op_ifeq", "op_ifne", "op_iflt", "op_ifge",
-    "op_ifgt", "op_ifle", "op_if_icmpeq", "op_if_icmpne", "op_if_icmplt",
-    "op_if_icmpge", "op_if_icmpgt", "op_if_icmple", "op_if_acmpeq", "op_if_acmpne",
-    "op_goto", "op_jsr", "op_ret", "op_tableswitch", "op_lookupswitch",
-    "op_ireturn", "op_lreturn", "op_freturn", "op_dreturn", "op_areturn",
-    "op_return", "op_getstatic", "op_putstatic", "op_getfield", "op_putfield",
-    "op_invokevirtual", "op_invokespecial", "op_invokestatic",
-    "op_invokeinterface", "op_186", "op_new", "op_newarray", "op_anewarray",
-    "op_arraylength", "op_athrow", "op_checkcast", "op_instanceof",
-    "op_monitorenter", "op_monitorexit", "op_wide", "op_multianewarray",
-    "op_ifnull", "op_ifnonnull", "op_goto_w", "op_jsr_w", "op_breakpoint",
-    "op_203", "op_204", "op_205", "op_206", "op_207", "op_ret_w"
+    "nop", "aconst_null", "iconst_m1", "iconst_0", "iconst_1",
+    "iconst_2", "iconst_3", "iconst_4", "iconst_5", "lconst_0",
+    "lconst_1", "fconst_0", "fconst_1", "fconst_2", "dconst_0",
+    "dconst_1", "bipush", "sipush", "ldc", "ldc_w", "ldc2_w",
+    "iload", "lload", "fload", "dload", "aload", "iload_0",
+    "iload_1", "iload_2", "iload_3", "lload_0", "lload_1",
+    "lload_2", "lload_3", "fload_0", "fload_1", "fload_2",
+    "fload_3", "dload_0", "dload_1", "dload_2", "dload_3",
+    "aload_0", "aload_1", "aload_2", "aload_3", "iaload",
+    "laload", "faload", "daload", "aaload", "baload", "caload",
+    "saload", "istore", "lstore", "fstore", "dstore", "astore",
+    "istore_0", "istore_1", "istore_2", "istore_3", "lstore_0",
+    "lstore_1", "lstore_2", "lstore_3", "fstore_0", "fstore_1",
+    "fstore_2", "fstore_3", "dstore_0", "dstore_1", "dstore_2",
+    "dstore_3", "astore_0", "astore_1", "astore_2", "astore_3",
+    "iastore", "lastore", "fastore", "dastore", "aastore",
+    "bastore", "castore", "sastore", "pop", "pop2", "dup",
+    "dup_x1", "dup_x2", "dup2", "dup2_x1", "dup2_x2", "swap",
+    "iadd", "ladd", "fadd", "dadd", "isub", "lsub", "fsub",
+    "dsub", "imul", "lmul", "fmul", "dmul", "idiv", "ldiv",
+    "fdiv", "ddiv", "irem", "lrem", "frem", "drem", "ineg",
+    "lneg", "fneg", "dneg", "ishl", "lshl", "ishr", "lshr",
+    "iushr", "lushr", "iand", "land", "ior", "lor", "ixor",
+    "lxor", "iinc", "i2l", "i2f", "i2d", "l2i", "l2f",
+    "l2d", "f2i", "f2l", "f2d", "d2i", "d2l", "d2f",
+    "i2b", "i2c", "i2s", "lcmp", "fcmpl",
+    "fcmpg", "dcmpl", "dcmpg", "ifeq", "ifne", "iflt", "ifge",
+    "ifgt", "ifle", "if_icmpeq", "if_icmpne", "if_icmplt",
+    "if_icmpge", "if_icmpgt", "if_icmple", "if_acmpeq", "if_acmpne",
+    "goto", "jsr", "ret", "tableswitch", "lookupswitch",
+    "ireturn", "lreturn", "freturn", "dreturn", "areturn",
+    "return", "getstatic", "putstatic", "getfield", "putfield",
+    "invokevirtual", "invokespecial", "invokestatic",
+    "invokeinterface", "op_186", "new", "newarray", "anewarray",
+    "arraylength", "athrow", "checkcast", "instanceof",
+    "monitorenter", "monitorexit", "wide", "multianewarray",
+    "ifnull", "ifnonnull", "goto_w", "jsr_w", "breakpoint",
+    "op_203", "op_204", "op_205", "op_206", "op_207", "ret_w"
 ];
 
 function ClassError(msg) {
@@ -453,18 +453,18 @@ function fromIEEE754Double(b) {
     }
 }
 
-function disassemble1(opcode) {
+function disassemble1(pc, opcode) {
     var ins = OpcodeName[opcode[0]];
     for (var j = 1; j < opcode.length; j++) {
         ins += j === 1 ? "  " : ", ";
         ins += opcode[j];
     }
-    print("      " + ins);
+    print("      " + pc + " " + ins);
 }
 
 function disassemble(code) {
     for (var i = 0; i < code.length; i++) {
-        disassemble1(code[i]);
+        disassemble1(i, code[i]);
     }
 }
 
@@ -3244,7 +3244,7 @@ function loop(env) {
         var pc = env.pc;
         while (true) {
             var op = code[pc][0];
-            disassemble1(code[pc]);
+            disassemble1(pc, code[pc]);
             var next = Opcode[op](env.cls, env, code[pc], pc);
             if (next === undefined) {
                 throw ("Unimplemented opcode: " + op + " " + OpcodeName[op]);
