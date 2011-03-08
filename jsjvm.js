@@ -2207,18 +2207,35 @@ Opcode = [
     
     // op_checkcast
     function(cls, env, ins, pc) {
+        var obj = env.top();
+        // TODO
+        return pc + 1;
     },
     
     // op_instanceof
-    function(cls, env, ins) {
+    function(cls, env, ins, pc) {
+        var obj = env.pop();
+        if (obj === null) {
+            env.push1(0);
+        } else {
+            // TODO
+            env.push1(1);
+        }
+        return pc + 1;
     },
     
     // op_monitorenter
     function(cls, env, ins, pc) {
+        var obj = env.pop();
+        // TODO
+        return pc + 1;
     },
     
     // op_monitorexit
     function(cls, env, ins, pc) {
+        var obj = env.pop();
+        // TODO
+        return pc + 1;
     },
     
     // op_wide
@@ -2227,6 +2244,27 @@ Opcode = [
     
     // op_multianewarray
     function(cls, env, ins, pc) {
+        var acls = ins[1];
+        var d = ins[2];
+        var dims = [];
+        while (d--) {
+            dims[d] = env.pop();
+        }
+        var alloc = function(i) {
+            if (i >= dims.length) {
+                return null;
+            }
+            var c = dims[i];
+            var r = new JArray(acls, c, null);
+            if (c > 0) {
+                while (c--) {
+                    r.store(c, alloc(i + 1));
+                }
+            }
+            return r;
+        };
+        env.push1(alloc(0));
+        return pc + 1;
     },
     
     // op_ifnull
@@ -3018,7 +3056,7 @@ Class.prototype.decodeBytecode = function(code) {
             //case op_wide:
             case op_multianewarray:
                 ins = [op_multianewarray, this.constant_pool[u16(code, i+1)], code.charCodeAt(i+3)];
-                ins += 3;
+                i += 3;
                 break;
             case op_ifnull:
                 ins = [op_ifnull, i + s16(code, i+1)];
