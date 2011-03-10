@@ -2065,7 +2065,7 @@ Opcode = [
             args[nargs] = env.pop();
         }
         var obj = env.pop();
-        var r = callMethod(env, cls.classloader.getClass(mr.classname), mr.name_and_type.name + mr.name_and_type.descriptor, 0, obj, args, argcats);
+        var r = startMethod(env, cls.classloader.getClass(mr.classname), mr.name_and_type.name + mr.name_and_type.descriptor, 0, obj, args, argcats);
         if (r instanceof Environment) {
             return r;
         }
@@ -2091,7 +2091,7 @@ Opcode = [
             args[nargs] = env.pop();
         }
         var obj = env.pop();
-        var r = callMethod(env, cls.classloader.getClass(mr.classname), mr.name_and_type.name + mr.name_and_type.descriptor, ACC_PRIVATE, obj, args, argcats);
+        var r = startMethod(env, cls.classloader.getClass(mr.classname), mr.name_and_type.name + mr.name_and_type.descriptor, ACC_PRIVATE, obj, args, argcats);
         if (r instanceof Environment) {
             return r;
         }
@@ -2116,7 +2116,7 @@ Opcode = [
             argcats[nargs] = env.topcat();
             args[nargs] = env.pop();
         }
-        var r = callMethod(env, cls.classloader.getClass(mr.classname), mr.name_and_type.name + mr.name_and_type.descriptor, ACC_STATIC, null, args, argcats);
+        var r = startMethod(env, cls.classloader.getClass(mr.classname), mr.name_and_type.name + mr.name_and_type.descriptor, ACC_STATIC, null, args, argcats);
         if (r instanceof Environment) {
             return r;
         }
@@ -2142,7 +2142,7 @@ Opcode = [
             args[nargs] = env.pop();
         }
         var obj = env.pop();
-        var r = callMethod(env, cls.classloader.getClass(mr.classname), mr.name_and_type.name + mr.name_and_type.descriptor, 0, obj, args, argcats);
+        var r = startMethod(env, cls.classloader.getClass(mr.classname), mr.name_and_type.name + mr.name_and_type.descriptor, 0, obj, args, argcats);
         if (r instanceof Environment) {
             return r;
         }
@@ -3321,28 +3321,41 @@ function callMethod(env, cls, method, methodtype, obj, args, argcats) {
     return new Environment(env, cls, m, methodtype, obj, args, argcats);
 }
 
-function loop(env) {
-    while (env !== null) {
-        var code = env.method.attribute_by_name["Code"].attr.code;
-        var pc = env.pc;
-        while (true) {
-            var op = code[pc][0];
-            disassemble1(pc, code[pc]);
-            var next = Opcode[op](env.cls, env, code[pc], pc);
-            if (next === undefined) {
-                throw ("Unimplemented opcode: " + op + " " + OpcodeName[op]);
+function step(env) {
+    var code = env.method.attribute_by_name["Code"].attr.code;
+    var pc = env.pc;
+    while (true) {
+        if (false) {
+            var st = "";
+            for (var i = 0; i < env.stack.index; i++) {
+                st += env.stack.stack[i] + ", ";
             }
-            if (next instanceof Environment) {
-                env.pc = pc + 1;
-                env = next;
-                break;
-            } else if (next < 0) {
-                env = env.parent;
-                break;
-            } else {
-                pc = next;
-            }
+            print(st);
         }
+        var op = code[pc][0];
+        disassemble1(pc, code[pc]);
+        var next = Opcode[op](env.cls, env, code[pc], pc);
+        if (next === undefined) {
+            throw ("Unimplemented opcode: " + op + " " + OpcodeName[op]);
+        }
+        if (next instanceof Environment) {
+            env.pc = pc + 1;
+            env = next;
+            break;
+        } else if (next < 0) {
+            env = env.parent;
+            break;
+        } else {
+            pc = next;
+        }
+    }
+    return env;
+}
+
+function runMethod(env, cls, method, methodtype, obj, args, argcats) {
+    var e = startMethod(env, cls, method, methodtype, obj, args, argcats);
+    while (e != env) {
+        e = step(e);
     }
 }
 
@@ -3352,8 +3365,4 @@ jls.out = new ConsolePrintStream();
 var fcl = new FileClassLoader(scl);
 var c = fcl.getClass(arguments[0]);
 //c.dump();
-var env = callMethod(null, c, "main([Ljava/lang/String;)V", ACC_STATIC, null, [], []);
-if (!(env instanceof Environment)) {
-    throw ("expected Environment, got " + env);
-}
-loop(env);
+runMethod(null, c, "main([Ljava/lang/String;)V", ACC_STATIC, null, [], []);
