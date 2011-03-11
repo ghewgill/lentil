@@ -278,10 +278,55 @@ OpcodeName = [
     "op_203", "op_204", "op_205", "op_206", "op_207", "ret_w"
 ];
 
+var JString;
+
 NativeMethod = {
+    "java/lang/Object": {
+        "hashCode": function() {
+            return 1;
+        }
+    },
     "java/lang/VMThrowable": {
         "fillInStackTrace(Ljava/lang/Throwable;)Ljava/lang/VMThrowable;": function(t) {
             return null;
+        }
+    },
+    "gnu/classpath/VMSystemProperties": {
+        "preInit(Ljava/util/Properties;)V": function(p) {
+            var sp = {
+                "java.version"                  : "Java version number",
+                "java.vendor"                   : "Java vendor specific string",
+                "java.vendor.url"               : "Java vendor URL",
+                "java.home"                     : "Java installation directory",
+                "java.vm.specification.version" : "VM Spec version",
+                "java.vm.specification.vendor"  : "VM Spec vendor",
+                "java.vm.specification.name"    : "VM Spec name",
+                "java.vm.version"               : "VM implementation version",
+                "java.vm.vendor"                : "VM implementation vendor",
+                "java.vm.name"                  : "VM implementation name",
+                "java.specification.version"    : "Java Runtime Environment version",
+                "java.specification.vendor"     : "Java Runtime Environment vendor",
+                "java.specification.name"       : "Java Runtime Environment name",
+                "java.class.version"            : "Java class version number",
+                "java.class.path"               : "Java classpath",
+                "java.library.path"             : "Path for finding Java libraries",
+                "java.io.tmpdir"                : "Default temp file path",
+                "java.compiler"                 : "Name of JIT to use",
+                "java.ext.dirs"                 : "Java extension path",
+                "os.name"                       : "Operating System Name",
+                "os.arch"                       : "Operating System Architecture",
+                "os.version"                    : "Operating System Version",
+                "file.separator"                : "File separator (\"/\" on Unix)",
+                "path.separator"                : "Path separator (\":\" on Unix)",
+                "line.separator"                : "Line separator (\"\\n\" on Unix)",
+                "user.name"                     : "User account name",
+                "user.home"                     : "User home directory",
+                "user.dir"                      : "User's current working directory",
+                "gnu.cpu.endian"                : "\"big\" or \"little\""
+            };
+            for (var k in sp) {
+                runMethod(null, p.__jvm_class, "setProperty(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/Object;", 0, p, [internString(k), internString(sp[k])], [1, 1]);
+            }
         }
     }
 }
@@ -334,6 +379,35 @@ function DataInput(bytes) {
     this.remaining = function() {
         return this.data.length - this.index;
     }
+}
+
+function dump(x, indent) {
+    if (indent === undefined) {
+        indent = "  ";
+    }
+    var r = "";
+    if (x === undefined) {
+        r += "undefined";
+    } else if (x === null) {
+        r += "null";
+    } else if (typeof(x) === "function") {
+        r += "function";
+    } else if (typeof(x) === "object") {
+        r += "\n";
+        for (var p in x) {
+            v = x[p];
+            r += indent + p + ": ";
+            if (p === "__jvm_class") {
+                r += v;
+            } else {
+                r += dump(v, indent + "    ");
+            }
+            r += "\n";
+        }
+    } else {
+        r = "(" + typeof(x) + ") " + x;
+    }
+    return r;
 }
 
 function s8(data, index) {
@@ -474,6 +548,25 @@ function disassemble(code) {
     for (var i = 0; i < code.length; i++) {
         disassemble1(i, code[i]);
     }
+}
+
+var Intern = {};
+
+function internString(s) {
+    var r = Intern[s];
+    if (r !== undefined) {
+        r.__jvm_class = JString;
+        return r;
+    }
+    r = {};
+    r.__jvm_class = JString;
+    r.value = new JArray("C", s.length, 0);
+    r.value.a = s;
+    r.offset = 0;
+    r.count = s.length;
+    r.cachedHashCode = 1; // TODO
+    Intern[s] = r;
+    return r;
 }
 
 function ConstantClass(cls, din) {
@@ -640,7 +733,7 @@ function ConstantString(cls, din) {
     }
 
     this.value = function() {
-        return this.string;
+        return internString(this.string);
     }
 }
 
@@ -830,7 +923,6 @@ function getNargs(descriptor) {
 }
 
 function defaultValue(descriptor) {
-    return 0;
     switch (descriptor.charAt(0)) {
         case 'B': return 0;
         case 'C': return 0;
@@ -1351,6 +1443,12 @@ Opcode = [
     
     // op_dup_x1
     function(cls, env, ins, pc) {
+        var v1 = env.pop();
+        var v2 = env.pop();
+        env.push1(v1);
+        env.push1(v2);
+        env.push1(v1);
+        return pc + 1;
     },
     
     // op_dup_x2
@@ -1961,10 +2059,13 @@ Opcode = [
     
     // op_jsr
     function(cls, env, ins, pc) {
+        env.push1(pc);
+        return ins[1];
     },
     
     // op_ret
     function(cls, env, ins, pc) {
+        return env.pop();
     },
     
     // op_tableswitch
@@ -2376,6 +2477,23 @@ function Class(classloader, bytes) {
         this.interfaces[i] = this.constant_pool[this.interfaces[i]];
     }
 
+    if (this.super_class) {
+        classloader.getClass(this.super_class.name);
+    }
+
+    var c = this.super_class;
+    while (c) {
+        c = classloader.getClass(c.name);
+        for (var m in c.method_by_name) {
+            if (this.method_by_name[m] === undefined) {
+                this.method_by_name[m] = c.method_by_name[m];
+            }
+        }
+        c = c.super_class;
+    }
+}
+
+Class.prototype.staticInit = function() {
     this.statics = [];
     for (var i = 0; i < this.fields_count; i++) {
         var f = this.fields[i];
@@ -2384,6 +2502,10 @@ function Class(classloader, bytes) {
         }
     }
     this.statics["$assertionsDisabled"] = !this.desiredAssertionStatus();
+
+    if (this.method_by_name["<clinit>()V"]) {
+        runMethod(null, this, "<clinit>()V", ACC_STATIC, null, [], []);
+    }
 }
 
 Class.prototype.desiredAssertionStatus = function() {
@@ -2683,7 +2805,9 @@ Class.prototype.decodeBytecode = function(code) {
             case op_dup:
                 ins = [op_dup];
                 break;
-            //case op_dup_x1:
+            case op_dup_x1:
+                ins = [op_dup_x1];
+                break;
             //case op_dup_x2:
             //case op_dup2:
             //case op_dup2_x1:
@@ -2936,8 +3060,14 @@ Class.prototype.decodeBytecode = function(code) {
                 fixup.push(r.length);
                 i += 2;
                 break;
-            //case op_jsr:
-            //case op_ret:
+            case op_jsr:
+                ins = [op_jsr, i + s16(code, i+1)];
+                fixup.push(r.length);
+                i += 2;
+                break;
+            case op_ret:
+                ins = [op_ret];
+                break;
             case op_tableswitch:
                 var j = (i + 4) & ~3;
                 var def = i + s32(code, j);
@@ -3131,11 +3261,15 @@ Class.prototype.dump = function() {
 Class.prototype.newInstance = function() {
     var cls = this;
     return new function() {
+        print("newInstance", cls.this_class.name);
         this.__jvm_class = cls;
-        for (var i = 0; i < cls.fields_count; i++) {
-            var f = cls.fields[i];
-            if ((f.access_flags & ACC_STATIC) == 0) {
-                this[f.name] = defaultValue(f.descriptor);
+        for (var c = cls; c != null; c = c.super_class ? cls.classloader.getClass(c.super_class.name) : null) {
+            for (var i = 0; i < c.fields_count; i++) {
+                var f = c.fields[i];
+                if ((f.access_flags & ACC_STATIC) == 0) {
+                    print("  init", f.name);
+                    this[f.name] = defaultValue(f.descriptor);
+                }
             }
         }
     };
@@ -3162,15 +3296,6 @@ function JArray(type, size, def) {
     }
 }
 
-function java_lang_String() {
-    this.newInstance = function(s) {
-        return new function() {
-            this.classref = java_lang_String;
-            this.s = s;
-        };
-    }
-}
-
 function java_lang_System() {
     this.err = null;
     this["in"] = null;
@@ -3186,7 +3311,6 @@ function SystemClassLoader() {
             return c;
         }
         switch (name) {
-            case "java/lang/String": c = new java_lang_String(); break;
             case "java/lang/System": c = new java_lang_System(); break;
             default:
                 throw ("Unknown system class: " + name);
@@ -3208,6 +3332,7 @@ function FileClassLoader(parent) {
         if (c !== undefined) {
             return c;
         }
+        print("Loading", name);
         var f;
         try {
             f = new FileLoader(name + ".class");
@@ -3216,6 +3341,10 @@ function FileClassLoader(parent) {
         }
         c = new Class(this, f.readAll());
         this.classes[name] = c;
+        if (name === "java/lang/String") {
+            JString = c;
+        }
+        c.staticInit();
         return c;
     }
 }
@@ -3230,6 +3359,9 @@ function Stack() {
     }
 
     this.push1 = function(x) {
+        if (x === undefined) {
+            throw ("Pushing undefined on stack");
+        }
         this.cat[this.index] = 1;
         this.stack[this.index++] = x;
     }
@@ -3285,16 +3417,21 @@ function ConsolePrintStream() {
     }
 }
 
-function callMethod(env, cls, method, methodtype, obj, args, argcats) {
+function startMethod(env, cls, method, methodtype, obj, args, argcats) {
+    var countdepth = function(d, e) { return e ? countdepth(d+1, e.parent) : d; }
+    print("startMethod", countdepth(0, env), cls.this_class.name, method, dump(obj), dump(args));
     var objcls = obj && methodtype == 0 ? obj.__jvm_class : cls;
+    if (objcls === undefined) {
+        throw ("objclass undefined, obj: " + dump(obj));
+    }
     var m = objcls.method_by_name[method];
     if (m === undefined) {
         var name = method.substr(0, method.indexOf("("));
         if (name in obj) {
             var jsargs = [];
             for (var i = 0; i < args.length; i++) {
-                if (args[i].classref === java_lang_String) {
-                    jsargs[i] = args[i].s;
+                if (args[i].__jvm_class.name === "java/lang/String") {
+                    jsargs[i] = args[i].value;
                 } else {
                     jsargs[i] = args[i];
                 }
@@ -3307,8 +3444,8 @@ function callMethod(env, cls, method, methodtype, obj, args, argcats) {
         if (f !== undefined) {
             var jsargs = [];
             for (var i = 0; i < args.length; i++) {
-                if (args[i].classref === java_lang_String) {
-                    jsargs[i] = args[i].s;
+                if (args[i].__jvm_class.name === "java/lang/String") {
+                    jsargs[i] = args[i].value;
                 } else {
                     jsargs[i] = args[i];
                 }
@@ -3360,9 +3497,10 @@ function runMethod(env, cls, method, methodtype, obj, args, argcats) {
 }
 
 var scl = new SystemClassLoader();
-var jls = scl.getClass("java/lang/System");
-jls.out = new ConsolePrintStream();
 var fcl = new FileClassLoader(scl);
+fcl.getClass("java/lang/String");
+var jls = fcl.getClass("java/lang/System").newInstance();
+jls.out = new ConsolePrintStream();
 var c = fcl.getClass(arguments[0]);
 //c.dump();
 runMethod(null, c, "main([Ljava/lang/String;)V", ACC_STATIC, null, [], []);
