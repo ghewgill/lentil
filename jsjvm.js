@@ -293,17 +293,71 @@ var CurrentThread;
 
 NativeMethod = {
     "java/lang/Object": {
-        "hashCode": function() {
+        "hashCode": function(env) {
             return 1;
         }
     },
+    "java/lang/VMClassLoader": {
+        "getBootPackages()[Ljava/lang/String;": function(env) {
+            return null;
+        },
+        "getPrimitiveClass(C)Ljava/lang/Class;": function(env, c) {
+            return {"primitive_class": c};
+        }
+    },
+    "java/lang/VMObject": {
+        "clone(Ljava/lang/Cloneable;)Ljava/lang/Object;": function(env, obj) {
+            var r = {};
+            for (p in obj) {
+                r[p] = obj[p];
+            }
+            return r;
+        },
+        "getClass(Ljava/lang/Object;)Ljava/lang/Class;": function(env, obj) {
+            return obj.__jvm_class;
+        }
+    },
+    "java/lang/VMSystem": {
+        "arraycopy(Ljava/lang/Object;ILjava/lang/Object;II)V": function(env, src, srcStart, dest, destStart, len) {
+            if (src === null || dest === null) {
+                throw ("null pointer exception");
+            }
+            if ((!src instanceof JArray && dest instanceof JArray)) {
+                throw ("arraycopy with not arrays");
+            }
+            if (len < 0 || srcStart < 0 || srcStart + len > src.len() || destStart < 0 || destStart + len > dest.len()) {
+                throw ("index out of bounds");
+            }
+            if (src.__jvm_class.name !== dest.__jvm_class.name) {
+                throw ("incompatible arrays: " + src.__jvm_class.name + " " + dest.__jvm_class.name);
+            }
+            if (src.s !== undefined && dest.s !== undefined) {
+                var t = src.s.substr(srcStart, len);
+                dest.s = dest.s.substring(0, destStart) + t + dest.s.substring(destStart + len);
+            } else {
+                var t = src.a.slice(srcStart, srcStart + len);
+                for (var i = 0; i < len; i++) {
+                    dest.a[destStart + i] = t[i];
+                }
+            }
+        },
+        "identityHashCode(Ljava/lang/Object;)I": function(env, obj) {
+            // TODO: return id(obj);
+            return 1;
+        }
+    },
+    "java/lang/VMThread": {
+        "currentThread()Ljava/lang/Thread;": function(env) {
+            return env.thread;
+        }
+    },
     "java/lang/VMThrowable": {
-        "fillInStackTrace(Ljava/lang/Throwable;)Ljava/lang/VMThrowable;": function(t) {
+        "fillInStackTrace(Ljava/lang/Throwable;)Ljava/lang/VMThrowable;": function(env, t) {
             return null;
         }
     },
     "gnu/classpath/VMSystemProperties": {
-        "preInit(Ljava/util/Properties;)V": function(p) {
+        "preInit(Ljava/util/Properties;)V": function(env, p) {
             var sp = {
                 "java.version"                  : "Java version number",
                 "java.vendor"                   : "Java vendor specific string",
@@ -338,6 +392,19 @@ NativeMethod = {
             for (var k in sp) {
                 runMethod(null, p.__jvm_class, "setProperty(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/Object;", 0, p, [internString(k), internString(sp[k])], [1, 1]);
             }
+        }
+    },
+    "gnu/java/nio/VMChannel": {
+        "initIDs()V": function(env) {
+        },
+        "stdin_fd()I": function(env) {
+            return 0;
+        },
+        "stdout_fd()I": function(env) {
+            return 1;
+        },
+        "stderr_fd()I": function(env) {
+            return 2;
         }
     }
 }
@@ -3540,20 +3607,24 @@ function startMethod(env, cls, method, methodtype, obj, args, argcats) {
             return obj[name].apply(obj, jsargs);
         }
         throw ("Undefined method: " + method);
-    } else if (m.access_flags & ACC_NATIVE) {
-        var f = NativeMethod[objcls.this_class.name][method];
-        if (f !== undefined) {
-            var jsargs = [];
-            for (var i = 0; i < args.length; i++) {
-                if (args[i].__jvm_class.name === "java/lang/String") {
-                    jsargs[i] = args[i].value;
-                } else {
-                    jsargs[i] = args[i];
+    } else {
+        if (NativeMethod[objcls.this_class.name] !== undefined) {
+            var f = NativeMethod[objcls.this_class.name][method];
+            if (f !== undefined) {
+                var jsargs = [env];
+                for (var i = 0; i < args.length; i++) {
+                    if (args[i] && args[i].__jvm_class && args[i].__jvm_class.name === "java/lang/String") {
+                        jsargs.push(args[i].value);
+                    } else {
+                        jsargs.push(args[i]);
+                    }
                 }
+                return f.apply(obj, jsargs);
+            } else if (m.access_flags & ACC_NATIVE) {
+                throw ("Unknown native method: " + objcls.this_class.name + " " + m.name);
             }
-            return f.apply(obj, jsargs);
-        } else {
-            throw ("Unknown native method: " + objcls + " " + m.name);
+        } else if (m.access_flags & ACC_NATIVE) {
+            throw ("Unknown native method: " + objcls.this_class.name + " " + m.name);
         }
     }
     return new Environment(env, cls, m, methodtype, obj, args, argcats);
