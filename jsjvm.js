@@ -571,7 +571,7 @@ function internString(s) {
     r = {};
     r.__jvm_class = JString;
     r.value = new JArray("C", s.length, 0);
-    r.value.a = s;
+    r.value.s = s;
     r.offset = 0;
     r.count = s.length;
     r.cachedHashCode = 1; // TODO
@@ -2303,7 +2303,7 @@ Opcode = [
     
     // op_arraylength
     function(cls, env, ins, pc) {
-        env.push1(env.pop().a.length);
+        env.push1(env.pop().len());
         return pc + 1;
     },
     
@@ -3302,19 +3302,45 @@ Class.prototype.toString = function() {
 }
 
 function JArray(type, size, def) {
-    this.a = new Array(size);
-    for (var i = 0; i < size; i++) {
-        this.a[i] = def;
-    }
+    this.__jvm_class = {"name": "[" + type};
+    if (type === "C") {
+        this.s = "";
+        for (var i = 0; i < size; i++) {
+            this.s += "\0";
+        }
 
-    this.load = function(index) {
-        // TODO: bounds checking
-        return this.a[index];
-    }
+        this.len = function() {
+            return this.s.length;
+        }
 
-    this.store = function(index, value) {
-        // TODO: bounds checking
-        this.a[index] = value;
+        this.load = function(index) {
+            // TODO: bounds checking
+            return this.s.charCodeAt(index);
+        }
+
+        this.store = function(index, value) {
+            // TODO: bounds checking
+            this.s = this.s.substring(0, index) + String.fromCharCode(value) + this.s.substring(index + 1);
+        }
+    } else {
+        this.a = new Array(size);
+        for (var i = 0; i < size; i++) {
+            this.a[i] = def;
+        }
+
+        this.len = function() {
+            return this.a.length;
+        }
+
+        this.load = function(index) {
+            // TODO: bounds checking
+            return this.a[index];
+        }
+
+        this.store = function(index, value) {
+            // TODO: bounds checking
+            this.a[index] = value;
+        }
     }
 }
 
