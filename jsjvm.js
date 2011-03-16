@@ -2152,14 +2152,14 @@ Opcode = [
     function(cls, env, ins, pc) {
         var fr = ins[1];
         // TODO: cat2 field
-        env.push1(cls.classloader.getClass(fr.classname).statics[fr.name_and_type.name]);
+        env.push1(cls.classloader.getClass(fr.classname).getStatic(fr.name_and_type.name));
         return pc + 1;
     },
     
     // op_putstatic
     function(cls, env, ins, pc) {
         var fr = ins[1];
-        cls.classloader.getClass(fr.classname).statics[fr.name_and_type.name] = env.pop();
+        cls.classloader.getClass(fr.classname).putStatic(fr.name_and_type.name, env.pop());
         return pc + 1;
     },
     
@@ -2537,6 +2537,25 @@ Class.prototype.staticInit = function() {
     if (this.method_by_name["<clinit>()V"]) {
         runMethod(null, this, "<clinit>()V", ACC_STATIC, null, [], []);
     }
+}
+
+Class.prototype.getStatic = function(name) {
+    for (var c = this; c != null; c = c.classloader.getClass(c.super_class.name)) {
+        if (name in c.statics) {
+            return c.statics[name];
+        }
+    }
+    throw ("Unknown static: " + name);
+}
+
+Class.prototype.putStatic = function(name, value) {
+    for (var c = this; c != null; c = c.classloader.getClass(c.super_class.name)) {
+        if (name in c.statics) {
+            c.statics[name] = value;
+            return;
+        }
+    }
+    throw ("Unknown static: " + name);
 }
 
 Class.prototype.desiredAssertionStatus = function() {
@@ -3322,7 +3341,6 @@ Class.prototype.newInstance = function() {
             for (var i = 0; i < c.fields_count; i++) {
                 var f = c.fields[i];
                 if ((f.access_flags & ACC_STATIC) == 0) {
-                    print("  init", f.name);
                     this[f.name] = defaultValue(f.descriptor);
                 }
             }
