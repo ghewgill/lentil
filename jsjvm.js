@@ -449,33 +449,33 @@ function s32(data, index) {
 
 function x8(x) {
     if (x & 0x80) {
-        return -(x & 0x7f);
+        return -0x80 + (x & 0x7f);
     } else {
-        return x;
+        return x & 0x7f;
     }
 }
 
 function x16(x) {
     if (x & 0x8000) {
-        return -(x & 0x7fff);
+        return -0x8000 + (x & 0x7fff);
     } else {
-        return x;
+        return x & 0x7fff;
     }
 }
 
 function x32(x) {
     if (x & 0x80000000) {
-        return -(x & 0x7fffffff);
+        return -0x80000000 + (x & 0x7fffffff);
     } else {
-        return x;
+        return x & 0x7fffffff;
     }
 }
 
 function x64(x) {
     if (x & 0x8000000000000000) {
-        return -(x & 0x7fffffffffffffff);
+        return -0x8000000000000000 + (x & 0x7fffffffffffffff);
     } else {
-        return x;
+        return x & 0x7fffffffffffffff;
     }
 }
 
