@@ -207,5 +207,6 @@ class OpcodeTest {
         //void op_jsr_w() { }
         //void op_breakpoint() { }
         //void op_ret_w() { }
+        System.out.println("OpcodeTest succeeded");
     }
 }
