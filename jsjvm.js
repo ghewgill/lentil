@@ -289,6 +289,7 @@ OpcodeName = [
 ];
 
 var JString;
+var CurrentThread;
 
 NativeMethod = {
     "java/lang/Object": {
@@ -3481,6 +3482,7 @@ function Stack() {
 
 function Environment(parent, cls, method, methodtype, obj, args, argcats) {
     this.parent = parent;
+    this.thread = CurrentThread;
     this.cls = cls;
     this.method = method;
     this.obj = obj;
@@ -3598,6 +3600,12 @@ function runMethod(env, cls, method, methodtype, obj, args, argcats) {
 var scl = new SystemClassLoader();
 var fcl = new FileClassLoader(scl);
 fcl.getClass("java/lang/String");
+var jltg = fcl.getClass("java/lang/ThreadGroup");
+var tg = jltg.newInstance();
+runMethod(null, jltg, "<init>()V", 0, tg, [], []);
+var jlt = fcl.getClass("java/lang/Thread");
+CurrentThread = jlt.newInstance();
+runMethod(null, jlt, "<init>(Ljava/lang/ThreadGroup;Ljava/lang/String;)V", 0, CurrentThread, [tg, null], [1, 1]);
 var jls = fcl.getClass("java/lang/System").newInstance();
 jls.out = new ConsolePrintStream();
 var c = fcl.getClass(arguments[0]);
