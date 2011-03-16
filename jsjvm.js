@@ -764,11 +764,17 @@ function ConstantUtf8(cls, din) {
     }
 }
 
-function ExceptionTableEntry(din) {
+function ExceptionTableEntry(cls, din) {
     this.start_pc = din.readUnsignedShort();
     this.end_pc = din.readUnsignedShort();
     this.handler_pc = din.readUnsignedShort();
     this.catch_type = din.readUnsignedShort();
+
+    if (this.catch_type > 0) {
+        this.catch_class = cls.constant_pool[this.catch_type].resolve().value();
+    } else {
+        this.catch_class = null;
+    }
 
     this.fixup = function(pc_to_index) {
         this.start_pc = pc_to_index[this.start_pc];
@@ -780,7 +786,7 @@ function ExceptionTableEntry(din) {
         print("      start_pc:", this.start_pc);
         print("      end_pc:", this.end_pc);
         print("      handler_pc:", this.handler_pc);
-        print("      catch_type:", this.catch_type);
+        print("      catch_type:", this.catch_type, this.catch_class);
     }
 }
 
@@ -794,7 +800,7 @@ var AttributeDecoder = {
         this.exception_table_length = din.readUnsignedShort();
         this.exception_table = [];
         for (var i = 0; i < this.exception_table_length; i++) {
-            this.exception_table[i] = new ExceptionTableEntry(din);
+            this.exception_table[i] = new ExceptionTableEntry(cls, din);
             this.exception_table[i].fixup(cls.pc_to_index);
         }
         this.attributes_count = din.readUnsignedShort();
@@ -2314,13 +2320,18 @@ Opcode = [
             var et = env.method.attribute_by_name["Code"].attr.exception_table;
             for (var i = 0; i < et.length; i++) {
                 // TODO: check instance type too!
-                if (pc >= et[i].start_pc && pc < et[i].end_pc) {
+                if (pc >= et[i].start_pc && pc < et[i].end_pc &&
+                    (et[i].catch_class === null || x.__jvm_class.instanceOf(et[i].catch_class))) {
                     env.push1(x);
                     env.pc = et[i].handler_pc;
                     return env;
                 }
             }
             env = env.parent;
+            if (env === null) {
+                print(x.__jvm_class);
+                throw dump(x.detailMessage);
+            }
             pc = env.pc;
         }
         throw ("Unhandled exception");
@@ -3249,6 +3260,28 @@ Class.prototype.decodeBytecode = function(code) {
         }
     }
     return r;
+}
+
+Class.prototype.instanceOf = function(cls) {
+    if (this === cls) {
+        return true;
+    }
+    for (var i = 0; i < this.interfaces_count; i++) {
+        var iface = this.interfaces[i];
+        while (true) {
+            if (cls === this.classloader.getClass(iface.name)) {
+                return true;
+            }
+            if (!iface.super_class) {
+                break;
+            }
+            iface = this.classloader.getClass(iface.super_class.name);
+        }
+    }
+    if (this.super_class) {
+        return this.classloader.getClass(this.super_class.name).instanceOf(cls);
+    }
+    return false;
 }
 
 Class.prototype.dump = function() {
