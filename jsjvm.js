@@ -1467,6 +1467,16 @@ Opcode = [
     
     // op_dup2
     function(cls, env, ins, pc) {
+        if (env.topcat() == 2) {
+            env.push2(env.top());
+        } else {
+            var v1 = env.pop();
+            var v2 = env.top();
+            env.push1(v1);
+            env.push1(v2);
+            env.push1(v1);
+        }
+        return pc + 1;
     },
     
     // op_dup2_x1
@@ -2819,7 +2829,9 @@ Class.prototype.decodeBytecode = function(code) {
                 ins = [op_dup_x1];
                 break;
             //case op_dup_x2:
-            //case op_dup2:
+            case op_dup2:
+                ins = [op_dup2];
+                break;
             //case op_dup2_x1:
             //case op_dup2_x2:
             //case op_swap:
