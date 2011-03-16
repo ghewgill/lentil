@@ -2551,11 +2551,9 @@ function Class(classloader, bytes) {
     }
     this.methods_count = din.readUnsignedShort();
     this.methods = [];
-    this.method_by_name = [];
     for (var i = 0; i < this.methods_count; i++) {
         var m = new MethodInfo(this, din);
         this.methods[i] = m;
-        this.method_by_name[m.full_name] = m;
     }
     this.attributes_count = din.readUnsignedShort();
     this.attributes = [];
@@ -2578,6 +2576,33 @@ function Class(classloader, bytes) {
 
     if (this.super_class) {
         classloader.getClass(this.super_class.name);
+    }
+
+    this.method_by_name = [];
+    for (var i = 0; i < this.methods_count; i++) {
+        (function(that, m) {
+            var fn;
+            if (NativeMethod[that.this_class.name]) {
+                fn = NativeMethod[that.this_class.name][m.full_name];
+            }
+            if (fn) {
+                that.method_by_name[m.full_name] = function(env, cls, methodtype, obj, args, argcats) {
+                    var jsargs = [env];
+                    for (var i = 0; i < args.length; i++) {
+                        if (args[i] && args[i].__jvm_class && args[i].__jvm_class.name === "java/lang/String") {
+                            jsargs.push(args[i].value);
+                        } else {
+                            jsargs.push(args[i]);
+                        }
+                    }
+                    return fn.apply(obj, jsargs);
+                };
+            } else {
+                that.method_by_name[m.full_name] = function(env, cls, methodtype, obj, args, argcats) {
+                    return new Environment(env, cls, m, methodtype, obj, args, argcats);
+                };
+            }
+        })(this, this.methods[i]);
     }
 
     var c = this.super_class;
@@ -3609,41 +3634,11 @@ function startMethod(env, cls, method, methodtype, obj, args, argcats) {
         throw ("objclass undefined, obj: " + dump(obj));
     }
     var m = objcls.method_by_name[method];
-    if (m === undefined) {
-        var name = method.substr(0, method.indexOf("("));
-        if (name in obj) {
-            var jsargs = [];
-            for (var i = 0; i < args.length; i++) {
-                if (args[i].__jvm_class.name === "java/lang/String") {
-                    jsargs[i] = args[i].value;
-                } else {
-                    jsargs[i] = args[i];
-                }
-            }
-            return obj[name].apply(obj, jsargs);
-        }
-        throw ("Undefined method: " + method);
+    if (m) {
+        return m(env, cls, methodtype, obj, args, argcats);
     } else {
-        if (NativeMethod[objcls.this_class.name] !== undefined) {
-            var f = NativeMethod[objcls.this_class.name][method];
-            if (f !== undefined) {
-                var jsargs = [env];
-                for (var i = 0; i < args.length; i++) {
-                    if (args[i] && args[i].__jvm_class && args[i].__jvm_class.name === "java/lang/String") {
-                        jsargs.push(args[i].value);
-                    } else {
-                        jsargs.push(args[i]);
-                    }
-                }
-                return f.apply(obj, jsargs);
-            } else if (m.access_flags & ACC_NATIVE) {
-                throw ("Unknown native method: " + objcls.this_class.name + " " + m.name);
-            }
-        } else if (m.access_flags & ACC_NATIVE) {
-            throw ("Unknown native method: " + objcls.this_class.name + " " + m.name);
-        }
+        throw ("Undefined method: " + method);
     }
-    return new Environment(env, cls, m, methodtype, obj, args, argcats);
 }
 
 function step(env) {
@@ -3688,7 +3683,7 @@ function step(env) {
 
 function runMethod(env, cls, method, methodtype, obj, args, argcats) {
     var e = startMethod(env, cls, method, methodtype, obj, args, argcats);
-    while (e != env) {
+    while (e !== env) {
         e = step(e);
     }
 }
