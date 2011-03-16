@@ -3586,8 +3586,24 @@ function ConsolePrintStream() {
 }
 
 function startMethod(env, cls, method, methodtype, obj, args, argcats) {
-    var countdepth = function(d, e) { return e ? countdepth(d+1, e.parent) : d; }
-    print("startMethod", countdepth(0, env), cls.this_class.name, method, dump(obj), dump(args));
+    if (true) {
+        var countdepth = function(d, e) { return e ? countdepth(d+1, e.parent) : d; }
+        //print("startMethod", countdepth(0, env), cls.this_class.name, method, dump(obj), dump(args));
+        var indent = "";
+        for (var i = countdepth(0, env); i > 0; i--) indent += "  ";
+        var aa = [];
+        for (var i = 0; i < args.length; i++) {
+            if (args[i] === null) {
+                aa.push("null");
+            } else if (args[i].__jvm_class === JString) {
+                aa.push('"' + args[i].value.s + '"');
+            } else {
+                aa.push(args[i].toString());
+            }
+        }
+        print(indent, "startMethod", cls.this_class.name, method, "(" + aa.join(", ") + ")");
+    }
+
     var objcls = obj && methodtype == 0 ? obj.__jvm_class : cls;
     if (objcls === undefined) {
         throw ("objclass undefined, obj: " + dump(obj));
@@ -3634,15 +3650,24 @@ function step(env) {
     var code = env.method.attribute_by_name["Code"].attr.code;
     var pc = env.pc;
     while (true) {
-        if (false) {
-            var st = "";
+        if (true) {
+            var st = "stack: ";
             for (var i = 0; i < env.stack.index; i++) {
                 st += env.stack.stack[i] + ", ";
             }
             print(st);
         }
         var op = code[pc][0];
-        disassemble1(pc, code[pc]);
+
+        if (true) {
+            var r = "trace";
+            for (var e = env; e != null; e = e.parent) {
+                r += " " + e.cls.this_class.name + "." + e.method.name;
+            }
+            print(r);
+            disassemble1(pc, code[pc]);
+        }
+
         var next = Opcode[op](env.cls, env, code[pc], pc);
         if (next === undefined) {
             throw ("Unimplemented opcode: " + op + " " + OpcodeName[op]);
