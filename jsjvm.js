@@ -33,6 +33,16 @@ var T_SHORT   =  9;
 var T_INT     = 10;
 var T_LONG    = 11;
 
+var ArrayTypeChar = {};
+ArrayTypeChar[T_BOOLEAN] = "Z";
+ArrayTypeChar[T_CHAR   ] = "C";
+ArrayTypeChar[T_FLOAT  ] = "F";
+ArrayTypeChar[T_DOUBLE ] = "D";
+ArrayTypeChar[T_BYTE   ] = "B";
+ArrayTypeChar[T_SHORT  ] = "S";
+ArrayTypeChar[T_INT    ] = "I";
+ArrayTypeChar[T_LONG   ] = "J";
+
 var op_nop              = 0;
 var op_aconst_null      = 1;
 var op_iconst_m1        = 2;
@@ -3156,7 +3166,7 @@ Class.prototype.decodeBytecode = function(code) {
                 i += 2;
                 break;
             case op_newarray:
-                ins = [op_newarray, code.charCodeAt(i+1)];
+                ins = [op_newarray, ArrayTypeChar[code.charCodeAt(i+1)]];
                 i += 1;
                 break;
             case op_anewarray:
