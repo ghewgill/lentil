@@ -383,7 +383,7 @@ NativeMethod = {
                 "os.version"                    : "Operating System Version",
                 "file.separator"                : "File separator (\"/\" on Unix)",
                 "path.separator"                : "Path separator (\":\" on Unix)",
-                "line.separator"                : "Line separator (\"\\n\" on Unix)",
+                "line.separator"                : "\n",
                 "user.name"                     : "User account name",
                 "user.home"                     : "User home directory",
                 "user.dir"                      : "User's current working directory",
