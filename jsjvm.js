@@ -405,6 +405,11 @@ NativeMethod = {
         },
         "stderr_fd()I": function(env) {
             return 2;
+        },
+        "write(ILjava/nio/ByteBuffer;)I": function(env, fd, buffer) {
+            importClass(java.lang.System);
+            System.out.print(buffer.backing_buffer.a.slice(buffer.position, buffer.limit));
+            return buffer.limit - buffer.position;
         }
     }
 }
