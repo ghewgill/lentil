@@ -3438,7 +3438,9 @@ Class.prototype.dump = function() {
 Class.prototype.newInstance = function() {
     var cls = this;
     return new function() {
-        print("newInstance", cls.this_class.name);
+        if (false) {
+            print("newInstance", cls.this_class.name);
+        }
         this.__jvm_class = cls;
         for (var c = cls; c != null; c = c.super_class ? cls.classloader.getClass(c.super_class.name) : null) {
             for (var i = 0; i < c.fields_count; i++) {
@@ -3534,7 +3536,9 @@ function FileClassLoader(parent) {
         if (c !== undefined) {
             return c;
         }
-        print("Loading", name);
+        if (false) {
+            print("Loading", name);
+        }
         var f;
         try {
             f = new FileLoader(name + ".class");
@@ -3621,7 +3625,7 @@ function ConsolePrintStream() {
 }
 
 function startMethod(env, cls, method, methodtype, obj, args, argcats) {
-    if (true) {
+    if (false) {
         var countdepth = function(d, e) { return e ? countdepth(d+1, e.parent) : d; }
         //print("startMethod", countdepth(0, env), cls.this_class.name, method, dump(obj), dump(args));
         var indent = "";
@@ -3647,7 +3651,7 @@ function startMethod(env, cls, method, methodtype, obj, args, argcats) {
     if (m) {
         return m(env, cls, methodtype, obj, args, argcats);
     } else {
-        throw ("Undefined method: " + method);
+        throw ("Undefined method: " + method + "; obj: " + dump(obj) + " methods: " + dump(objcls.method_by_name));
     }
 }
 
@@ -3655,7 +3659,7 @@ function step(env) {
     var code = env.method.attribute_by_name["Code"].attr.code;
     var pc = env.pc;
     while (true) {
-        if (true) {
+        if (false) {
             var st = "stack: ";
             for (var i = 0; i < env.stack.index; i++) {
                 st += env.stack.stack[i] + ", ";
@@ -3664,7 +3668,7 @@ function step(env) {
         }
         var op = code[pc][0];
 
-        if (true) {
+        if (false) {
             var r = "trace";
             for (var e = env; e != null; e = e.parent) {
                 r += " " + e.cls.this_class.name + "." + e.method.name;
