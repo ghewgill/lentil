@@ -2153,13 +2153,13 @@ Opcode = [
     
     // op_jsr
     function(cls, env, ins, pc) {
-        env.push1(pc);
+        env.push1(pc + 1);
         return ins[1];
     },
     
     // op_ret
     function(cls, env, ins, pc) {
-        return env.pop();
+        return env.local[ins[1]];
     },
     
     // op_tableswitch
@@ -3211,7 +3211,8 @@ Class.prototype.decodeBytecode = function(code) {
                 i += 2;
                 break;
             case op_ret:
-                ins = [op_ret];
+                ins = [op_ret, code.charCodeAt(i+1)];
+                i += 1;
                 break;
             case op_tableswitch:
                 var j = (i + 4) & ~3;
