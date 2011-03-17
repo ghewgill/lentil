@@ -2602,9 +2602,13 @@ function Class(classloader, bytes) {
                     }
                     return fn.apply(obj, jsargs);
                 };
-            } else {
+            } else if (!(m.access_flags & ACC_NATIVE)) {
                 that.method_by_name[m.full_name] = function(env, cls, methodtype, obj, args, argcats) {
                     return new Environment(env, cls, m, methodtype, obj, args, argcats);
+                };
+            } else {
+                that.method_by_name[m.full_name] = function(env, cls, methodtype, obj, args, argcats) {
+                    throw ("Native method not supplied: " + that.this_class.name + " " + m.full_name);
                 };
             }
         })(this, this.methods[i]);
