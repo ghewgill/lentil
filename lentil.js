@@ -2392,7 +2392,6 @@ Opcode = [
         while (env != null) {
             var et = env.method.attribute_by_name["Code"].attr.exception_table;
             for (var i = 0; i < et.length; i++) {
-                // TODO: check instance type too!
                 if (pc >= et[i].start_pc && pc < et[i].end_pc &&
                     (et[i].catch_class === null || x.__jvm_class.instanceOf(et[i].catch_class))) {
                     env.push1(x);

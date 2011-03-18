@@ -1,0 +1,26 @@
+There is a lot to do yet to make this a functional virtual machine. The only
+program it's run successfully so far is the included "Hello world" program.
+
+Currently the "classloader" is implemented in Javascript, but it needs to use
+the java.lang.ClassLoader class from Classpath instead.
+
+The support for the "long" datatype currently uses Javascript Numbers and
+cannot represent full 64-bit precision integers. There are existing Javascript
+implementations of 64-bit integer arithmetic that could be used.
+
+The implementation of java.lang.VMSystem#identityHashCode always returns 1. Not
+sure how to get a useful object identity from a JS object.
+
+Not all opcodes are implemented yet. Some seem to be rarely used. The Opcodes
+class attempts to coerce the compiler to generate at least one of each opcode,
+and the OpcodeTest class checks the result. Another approach would be to use
+Jasmin to generate the opcodes directly. There are still many corner cases that
+probably aren't handled correctly.
+
+Fields of long or double (either instance or static) type don't quite work,
+they are pushed onto the stack as category 1 types.
+
+Very little runtime checking is done. For example, array bounds checking or
+cast type checking doesn't throw an exception.
+
+Threading is not yet implemented.
