@@ -1,6 +1,6 @@
 jsenv = Environment()
 jsenv.Append(JAVACLASSPATH="js.jar")
-jsenv.Java(".", ["File.java", "FileLoader.java"])
+jsenv.Java(".", ["FileLoader.java"])
 
 env = Environment()
 env.Java(".", ["Opcodes.java", "OpcodeCoverage.java", "OpcodeTest.java"])
