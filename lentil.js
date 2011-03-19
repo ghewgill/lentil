@@ -1,3 +1,9 @@
+var DEBUG_LOAD_CLASS = false;
+var DEBUG_METHOD_CALLS = false;
+var DEBUG_NEW_INSTANCE = false;
+var DEBUG_TRACE_STACK = false;
+var DEBUG_TRACE_DISASSEMBLE = false;
+
 var CONSTANT_Utf8 = 1;
 var CONSTANT_Integer = 3;
 var CONSTANT_Float = 4;
@@ -3437,7 +3443,7 @@ Class.prototype.dump = function() {
 Class.prototype.newInstance = function() {
     var cls = this;
     return new function() {
-        if (false) {
+        if (DEBUG_NEW_INSTANCE) {
             print("newInstance", cls.this_class.name);
         }
         this.__jvm_class = cls;
@@ -3535,7 +3541,7 @@ function FileClassLoader(parent) {
         if (c !== undefined) {
             return c;
         }
-        if (false) {
+        if (DEBUG_LOAD_CLASS) {
             print("Loading", name);
         }
         var f;
@@ -3624,7 +3630,7 @@ function ConsolePrintStream() {
 }
 
 function startMethod(env, cls, method, methodtype, obj, args, argcats) {
-    if (false) {
+    if (DEBUG_METHOD_CALLS) {
         var countdepth = function(d, e) { return e ? countdepth(d+1, e.parent) : d; }
         //print("startMethod", countdepth(0, env), cls.this_class.name, method, dump(obj), dump(args));
         var indent = "";
@@ -3658,7 +3664,7 @@ function step(env) {
     var code = env.method.attribute_by_name["Code"].attr.code;
     var pc = env.pc;
     while (true) {
-        if (false) {
+        if (DEBUG_TRACE_STACK) {
             var st = "stack: ";
             for (var i = 0; i < env.stack.index; i++) {
                 st += env.stack.stack[i] + ", ";
@@ -3667,7 +3673,7 @@ function step(env) {
         }
         var op = code[pc][0];
 
-        if (false) {
+        if (DEBUG_TRACE_DISASSEMBLE) {
             var r = "trace";
             for (var e = env; e != null; e = e.parent) {
                 r += " " + e.cls.this_class.name + "." + e.method.name;
