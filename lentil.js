@@ -1,6 +1,7 @@
 var DEBUG_LOAD_CLASS = false;
 var DEBUG_METHOD_CALLS = false;
 var DEBUG_NEW_INSTANCE = false;
+var DEBUG_SHOW_DISASSEMBLY = false;
 var DEBUG_TRACE_STACK = false;
 var DEBUG_TRACE_DISASSEMBLE = false;
 
@@ -294,6 +295,7 @@ OpcodeName = [
     "op_203", "op_204", "op_205", "op_206", "op_207", "ret_w"
 ];
 
+var ClassesToLink = [];
 var JString;
 var CurrentThread;
 
@@ -418,6 +420,14 @@ NativeMethod = {
             return buffer.limit - buffer.position;
         }
     }
+}
+
+function indent(i) {
+    var r = "";
+    while (i--) {
+        r += " ";
+    }
+    return r;
 }
 
 function ClassError(msg) {
@@ -658,12 +668,11 @@ function internString(s) {
     return r;
 }
 
-function ConstantClass(cls, din) {
-    this.cls = cls;
+function ConstantClass(din) {
     this.name_index = din.readUnsignedShort();
 
-    this.resolve = function() {
-        this.name = this.cls.constant_pool[this.name_index].resolve().value();
+    this.resolve = function(cp) {
+        this.name = cp[this.name_index].value();
         return this;
     }
 
@@ -671,16 +680,15 @@ function ConstantClass(cls, din) {
         return "<class " + this.name + ">";
     }
 
-    this.value = function() {
-        return this.cls.classloader.getClass(this.name);
+    this.value = function(cl) {
+        return cl.getClass(this.name);
     }
 }
 
-function ConstantDouble(cls, din) {
-    this.cls = cls;
+function ConstantDouble(din) {
     this.bytes = fromIEEE754Double(din.readBytes(8));
 
-    this.resolve = function() {
+    this.resolve = function(cp) {
         return this;
     }
 
@@ -693,14 +701,13 @@ function ConstantDouble(cls, din) {
     }
 }
 
-function ConstantFieldref(cls, din) {
-    this.cls = cls;
+function ConstantFieldref(din) {
     this.class_index = din.readUnsignedShort();
     this.name_and_type_index = din.readUnsignedShort();
 
-    this.resolve = function() {
-        this.classname = this.cls.constant_pool[this.class_index].resolve().name;
-        this.name_and_type = this.cls.constant_pool[this.name_and_type_index].resolve();
+    this.resolve = function(cp) {
+        this.classname = cp[this.class_index].resolve(cp).name;
+        this.name_and_type = cp[this.name_and_type_index];
         return this;
     }
 
@@ -709,11 +716,10 @@ function ConstantFieldref(cls, din) {
     }
 }
 
-function ConstantFloat(cls, din) {
-    this.cls = cls;
+function ConstantFloat(din) {
     this.bytes = fromIEEE754Single(din.readUnsignedInt());
 
-    this.resolve = function() {
+    this.resolve = function(cp) {
         return this;
     }
 
@@ -726,11 +732,10 @@ function ConstantFloat(cls, din) {
     }
 }
 
-function ConstantInteger(cls, din) {
-    this.cls = cls;
+function ConstantInteger(din) {
     this.bytes = din.readUnsignedInt();
 
-    this.resolve = function() {
+    this.resolve = function(cp) {
         return this;
     }
 
@@ -743,14 +748,13 @@ function ConstantInteger(cls, din) {
     }
 }
 
-function ConstantInterfaceMethodref(cls, din) {
-    this.cls = cls;
+function ConstantInterfaceMethodref(din) {
     this.class_index = din.readUnsignedShort();
     this.name_and_type_index = din.readUnsignedShort();
 
-    this.resolve = function() {
-        this.classname = this.cls.constant_pool[this.class_index].resolve().name;
-        this.name_and_type = this.cls.constant_pool[this.name_and_type_index].resolve();
+    this.resolve = function(cp) {
+        this.classname = cp[this.class_index].resolve(cp).name;
+        this.name_and_type = cp[this.name_and_type_index];
         return this;
     }
 
@@ -759,11 +763,10 @@ function ConstantInterfaceMethodref(cls, din) {
     }
 }
 
-function ConstantLong(cls, din) {
-    this.cls = cls;
+function ConstantLong(din) {
     this.bytes = din.readUnsignedLong();
 
-    this.resolve = function() {
+    this.resolve = function(cp) {
         return this;
     }
 
@@ -776,14 +779,13 @@ function ConstantLong(cls, din) {
     }
 }
 
-function ConstantMethodref(cls, din) {
-    this.cls = cls;
+function ConstantMethodref(din) {
     this.class_index = din.readUnsignedShort();
     this.name_and_type_index = din.readUnsignedShort();
 
-    this.resolve = function() {
-        this.classname = this.cls.constant_pool[this.class_index].resolve().name;
-        this.name_and_type = this.cls.constant_pool[this.name_and_type_index].resolve();
+    this.resolve = function(cp) {
+        this.classname = cp[this.class_index].resolve(cp).name;
+        this.name_and_type = cp[this.name_and_type_index];
         return this;
     }
 
@@ -792,14 +794,13 @@ function ConstantMethodref(cls, din) {
     }
 }
 
-function ConstantNameAndType(cls, din) {
-    this.cls = cls;
+function ConstantNameAndType(din) {
     this.name_index = din.readUnsignedShort();
     this.descriptor_index = din.readUnsignedShort();
 
-    this.resolve = function() {
-        this.name = this.cls.constant_pool[this.name_index].resolve().value();
-        this.descriptor = this.cls.constant_pool[this.descriptor_index].resolve().value();
+    this.resolve = function(cp) {
+        this.name = cp[this.name_index].value();
+        this.descriptor = cp[this.descriptor_index].value();
         return this;
     }
 
@@ -808,12 +809,11 @@ function ConstantNameAndType(cls, din) {
     }
 }
 
-function ConstantString(cls, din) {
-    this.cls = cls;
+function ConstantString(din) {
     this.string_index = din.readUnsignedShort();
 
-    this.resolve = function() {
-        this.string = this.cls.constant_pool[this.string_index].resolve().value();
+    this.resolve = function(cp) {
+        this.string = cp[this.string_index].value();
         return this;
     }
 
@@ -826,11 +826,11 @@ function ConstantString(cls, din) {
     }
 }
 
-function ConstantUtf8(cls, din) {
+function ConstantUtf8(din) {
     this.length = din.readUnsignedShort();
     this.bytes = din.readBytes(this.length);
 
-    this.resolve = function() {
+    this.resolve = function(cp) {
         return this;
     }
 
@@ -848,12 +848,6 @@ function ExceptionTableEntry(cls, din) {
     this.end_pc = din.readUnsignedShort();
     this.handler_pc = din.readUnsignedShort();
     this.catch_type = din.readUnsignedShort();
-
-    if (this.catch_type > 0) {
-        this.catch_class = cls.constant_pool[this.catch_type].resolve().value();
-    } else {
-        this.catch_class = null;
-    }
 
     this.fixup = function(pc_to_index) {
         this.start_pc = pc_to_index[this.start_pc];
@@ -875,12 +869,12 @@ var AttributeDecoder = {
         this.max_stack = din.readUnsignedShort();
         this.max_locals = din.readUnsignedShort();
         this.code_length = din.readUnsignedInt();
-        this.code = cls.decodeBytecode(din.readBytes(this.code_length));
+        this.code = din.readBytes(this.code_length);
         this.exception_table_length = din.readUnsignedShort();
         this.exception_table = [];
         for (var i = 0; i < this.exception_table_length; i++) {
             this.exception_table[i] = new ExceptionTableEntry(cls, din);
-            this.exception_table[i].fixup(cls.pc_to_index);
+            //this.exception_table[i].fixup(cls.pc_to_index);
         }
         this.attributes_count = din.readUnsignedShort();
         this.attributes = [];
@@ -894,7 +888,7 @@ var AttributeDecoder = {
             print("    max_stack:", this.max_stack);
             print("    max_locals:", this.max_locals);
             print("    code_length:", this.code_length);
-            disassemble(this.code);
+            //disassemble(this.code);
             print("    exception_table_length:", this.exception_table_length);
             for (var i = 0; i < this.exception_table_length; i++) {
                 this.exception_table[i].dump();
@@ -1150,7 +1144,7 @@ Opcode = [
     
     // op_ldc_w
     function(cls, env, ins, pc) {
-        env.push1(ins[1].value());
+        env.push1(ins[1].value(cls.classloader));
         return pc + 1;
     },
     
@@ -2230,15 +2224,17 @@ Opcode = [
     // op_getstatic
     function(cls, env, ins, pc) {
         var fr = ins[1];
+        var c = cls.classloader.getClass(fr.classname);
         // TODO: cat2 field
-        env.push1(cls.classloader.getClass(fr.classname).getStatic(fr.name_and_type.name));
+        env.push1(c.getStatic(fr.name_and_type.name));
         return pc + 1;
     },
     
     // op_putstatic
     function(cls, env, ins, pc) {
         var fr = ins[1];
-        cls.classloader.getClass(fr.classname).putStatic(fr.name_and_type.name, env.pop());
+        var c = cls.classloader.getClass(fr.classname);
+        c.putStatic(fr.name_and_type.name, env.pop());
         return pc + 1;
     },
     
@@ -2322,7 +2318,9 @@ Opcode = [
             argcats[nargs] = env.topcat();
             args[nargs] = env.pop();
         }
-        var r = startMethod(env, cls.classloader.getClass(mr.classname), mr.name_and_type.name + mr.name_and_type.descriptor, ACC_STATIC, null, args, argcats);
+        var c = cls.classloader.getClass(mr.classname);
+        c.initialise();
+        var r = startMethod(env, c, mr.name_and_type.name + mr.name_and_type.descriptor, ACC_STATIC, null, args, argcats);
         if (r instanceof Environment) {
             return r;
         }
@@ -2510,9 +2508,7 @@ Opcode = [
     }
 ];
 
-function Class(classloader, bytes) {
-    this.__jvm_class = this;
-    this.classloader = classloader;
+function ClassFile(bytes) {
     var din = new DataInput(bytes);
     this.magic = din.readInt();
     this.minor_version = din.readUnsignedShort();
@@ -2524,28 +2520,30 @@ function Class(classloader, bytes) {
         var ofs = 0;
         var cp;
         switch (tag) {
-            case CONSTANT_Utf8:                 cp = new ConstantUtf8(this, din);     break;
-            case CONSTANT_Integer:              cp = new ConstantInteger(this, din);  break;
-            case CONSTANT_Float:                cp = new ConstantFloat(this, din);    break;
-            case CONSTANT_Long:                 cp = new ConstantLong(this, din);     ofs = 1; break;
-            case CONSTANT_Double:               cp = new ConstantDouble(this, din);   ofs = 1; break;
-            case CONSTANT_Class:                cp = new ConstantClass(this, din);    break;
-            case CONSTANT_String:               cp = new ConstantString(this, din);   break;
-            case CONSTANT_Fieldref:             cp = new ConstantFieldref(this, din); break;
-            case CONSTANT_Methodref:            cp = new ConstantMethodref(this, din); break;
-            case CONSTANT_InterfaceMethodref:   cp = new ConstantInterfaceMethodref(this, din); break;
-            case CONSTANT_NameAndType:          cp = new ConstantNameAndType(this, din); break;
+            case CONSTANT_Utf8:                 cp = new ConstantUtf8(din);     break;
+            case CONSTANT_Integer:              cp = new ConstantInteger(din);  break;
+            case CONSTANT_Float:                cp = new ConstantFloat(din);    break;
+            case CONSTANT_Long:                 cp = new ConstantLong(din);     ofs = 1; break;
+            case CONSTANT_Double:               cp = new ConstantDouble(din);   ofs = 1; break;
+            case CONSTANT_Class:                cp = new ConstantClass(din);    break;
+            case CONSTANT_String:               cp = new ConstantString(din);   break;
+            case CONSTANT_Fieldref:             cp = new ConstantFieldref(din); break;
+            case CONSTANT_Methodref:            cp = new ConstantMethodref(din); break;
+            case CONSTANT_InterfaceMethodref:   cp = new ConstantInterfaceMethodref(din); break;
+            case CONSTANT_NameAndType:          cp = new ConstantNameAndType(din); break;
             default:
                 throw ("Unknown constant pool tag: " + tag);
         }
         this.constant_pool[i] = cp;
         i += ofs;
     }
+
     for (var i = 1; i < this.constant_pool_count; i++) {
         if (this.constant_pool[i] !== undefined) {
-            this.constant_pool[i].resolve();
+            this.constant_pool[i].resolve(this.constant_pool);
         }
     }
+
     this.access_flags = din.readUnsignedShort();
     this.this_class = din.readUnsignedShort();
     this.super_class = din.readUnsignedShort();
@@ -2578,25 +2576,86 @@ function Class(classloader, bytes) {
         print("Unexpected extra data: " + din.remaining());
     }
 
-    this.this_class = this.constant_pool[this.this_class];
-    this.super_class = this.constant_pool[this.super_class];
-    for (var i = 0; i < this.interfaces_count; i++) {
-        this.interfaces[i] = this.constant_pool[this.interfaces[i]];
+    this.dump = function() {
+        print("magic:", this.magic);
+        print("minor_version:", this.minor_version);
+        print("major_version:", this.major_version);
+        print("constant_pool_count:", this.constant_pool_count);
+        for (var i = 1; i < this.constant_pool_count; i++) {
+            print("  " + i, this.constant_pool[i]);
+        }
+        print("access_flags:", this.access_flags);
+        print("this_class:", this.this_class);
+        print("super_class:", this.super_class);
+        print("interfaces_count:", this.interfaces_count);
+        for (var i = 0; i < this.interfaces_count; i++) {
+            print("  " + i, this.interfaces[i]);
+        }
+        print("fields_count:", this.fields_count);
+        for (var i = 0; i < this.fields_count; i++) {
+            print("- field");
+            this.fields[i].dump();
+        }
+        print("methods_count:", this.methods_count);
+        for (var i = 0; i < this.methods_count; i++) {
+            print("- method");
+            this.methods[i].dump();
+        }
+        print("attributes_count:", this.attributes_count);
+        for (var i = 0; i < this.attributes_count; i++) {
+            print("- attribute");
+            this.attributes[i].dump();
+        }
+    }
+}
+
+function Class(classloader, bytes) {
+    this.__jvm_class = this;
+    this.classloader = classloader;
+    this.initialised = false;
+
+    this.classfile = new ClassFile(bytes);
+    //this.classfile.dump();
+}
+
+Class.prototype.loadSuperclasses = function() {
+    var cf = this.classfile;
+    var cp = cf.constant_pool;
+    if (cf.super_class) {
+        this.classloader.getClass(cp[cf.super_class].name);
+    }
+    for (var i = 0; i < cf.interfaces.length; i++) {
+        this.classloader.getClass(cp[cf.interfaces[i]].name);
+    }
+}
+
+Class.prototype.link = function() {
+    this.name = this.classfile.constant_pool[this.classfile.this_class].name;
+    this.super_class = this.classfile.super_class ? this.classloader.getClass(this.classfile.constant_pool[this.classfile.super_class].name) : null;
+
+    this.interfaces = [];
+    for (var i = 0; i < this.classfile.interfaces_count; i++) {
+        this.interfaces[i] = this.classloader.getClass(this.classfile.constant_pool[this.classfile.interfaces[i]].name);
     }
 
-    if (this.super_class) {
-        classloader.getClass(this.super_class.name);
+    this.fields = [];
+    for (var i = 0; i < this.classfile.fields_count; i++) {
+        this.fields[i] = {
+            "name": this.classfile.constant_pool[this.classfile.fields[i].name_index].value(),
+            "descriptor": this.classfile.constant_pool[this.classfile.fields[i].descriptor_index].value(),
+            "access_flags": this.classfile.fields[i].access_flags
+        };
     }
 
-    this.method_by_name = [];
-    for (var i = 0; i < this.methods_count; i++) {
+    this.methods = {};
+    for (var i = 0; i < this.classfile.methods_count; i++) {
         (function(that, m) {
             var fn;
-            if (NativeMethod[that.this_class.name]) {
-                fn = NativeMethod[that.this_class.name][m.full_name];
+            if (NativeMethod[that.name]) {
+                fn = NativeMethod[that.name][m.full_name];
             }
             if (fn) {
-                that.method_by_name[m.full_name] = function(env, cls, methodtype, obj, args, argcats) {
+                that.methods[m.full_name] = {"thunk": function(env, cls, methodtype, obj, args, argcats) {
                     var jsargs = [env];
                     for (var i = 0; i < args.length; i++) {
                         if (args[i] && args[i].__jvm_class && args[i].__jvm_class.name === "java/lang/String") {
@@ -2606,34 +2665,50 @@ function Class(classloader, bytes) {
                         }
                     }
                     return fn.apply(obj, jsargs);
-                };
+                }};
             } else if (!(m.access_flags & ACC_NATIVE)) {
-                that.method_by_name[m.full_name] = function(env, cls, methodtype, obj, args, argcats) {
-                    return new Environment(env, cls, m, methodtype, obj, args, argcats);
-                };
+                that.methods[m.full_name] = {"thunk": function(env, cls, methodtype, obj, args, argcats) {
+                    var a = m.attribute_by_name["Code"].attr;
+                    a.code = that.decodeBytecode(a.code);
+                    for (var i = 0; i < a.exception_table_length; i++) {
+                        var e = a.exception_table[i];
+                        e.fixup(that.pc_to_index);
+                        if (e.catch_type > 0) {
+                            e.catch_class = that.classloader.getClass(that.classfile.constant_pool[e.catch_type].name);
+                        } else {
+                            e.catch_class = null;
+                        }
+                    }
+                    if (DEBUG_SHOW_DISASSEMBLY) {
+                        print(that.name, m.full_name);
+                        disassemble(a.code);
+                    }
+                    var newf = function(env, cls, methodtype, obj, args, argcats) {
+                        return new Environment(env, cls, m, methodtype, obj, args, argcats);
+                    };
+                    that.methods[m.full_name].thunk = newf;
+                    return newf(env, cls, methodtype, obj, args, argcats);
+                }};
             } else {
-                that.method_by_name[m.full_name] = function(env, cls, methodtype, obj, args, argcats) {
-                    throw ("Native method not supplied: " + that.this_class.name + " " + m.full_name);
-                };
+                that.methods[m.full_name] = {"thunk": function(env, cls, methodtype, obj, args, argcats) {
+                    throw ("Native method not supplied: " + that.name + " " + m.full_name);
+                }};
             }
-        })(this, this.methods[i]);
+        })(this, this.classfile.methods[i]);
     }
 
     var c = this.super_class;
     while (c) {
-        c = classloader.getClass(c.name);
-        for (var m in c.method_by_name) {
-            if (this.method_by_name[m] === undefined) {
-                this.method_by_name[m] = c.method_by_name[m];
+        for (var m in c.methods) {
+            if (this.methods[m] === undefined) {
+                this.methods[m] = c.methods[m];
             }
         }
         c = c.super_class;
     }
-}
 
-Class.prototype.staticInit = function() {
     this.statics = [];
-    for (var i = 0; i < this.fields_count; i++) {
+    for (var i = 0; i < this.fields.length; i++) {
         var f = this.fields[i];
         if (f.access_flags & ACC_STATIC) {
             this.statics[f.name] = defaultValue(f.descriptor);
@@ -2641,28 +2716,42 @@ Class.prototype.staticInit = function() {
     }
     this.statics["$assertionsDisabled"] = !this.desiredAssertionStatus();
 
-    if (this.method_by_name["<clinit>()V"]) {
-        runMethod(null, this, "<clinit>()V", ACC_STATIC, null, [], []);
+}
+
+Class.prototype.initialise = function() {
+    if (!this.initialised) {
+        if (this.super_class) {
+            this.super_class.initialise();
+        }
+        this.initialised = true;
+        if (this.methods["<clinit>()V"]) {
+            runMethod(null, this, "<clinit>()V", ACC_STATIC, null, [], []);
+        }
+        if (DEBUG_LOAD_CLASS) {
+            print("Initialised", this.name);
+        }
     }
 }
 
 Class.prototype.getStatic = function(name) {
-    for (var c = this; c != null; c = c.classloader.getClass(c.super_class.name)) {
+    this.initialise();
+    for (var c = this; c != null; c = c.super_class) {
         if (name in c.statics) {
             return c.statics[name];
         }
     }
-    throw ("Unknown static: " + name);
+    throw ("getStatic: Unknown static: " + name);
 }
 
 Class.prototype.putStatic = function(name, value) {
-    for (var c = this; c != null; c = c.classloader.getClass(c.super_class.name)) {
+    this.initialise();
+    for (var c = this; c != null; c = c.super_class) {
         if (name in c.statics) {
             c.statics[name] = value;
             return;
         }
     }
-    throw ("Unknown static: " + name);
+    throw ("putStatic: Unknown static: " + name);
 }
 
 Class.prototype.desiredAssertionStatus = function() {
@@ -2672,6 +2761,7 @@ Class.prototype.desiredAssertionStatus = function() {
 Class.prototype.decodeBytecode = function(code) {
     var r = [];
     this.pc_to_index = [];
+    var cp = this.classfile.constant_pool;
     var fixup = [];
     for (var i = 0; i < code.length; i++) {
         this.pc_to_index[i] = r.length;
@@ -2734,15 +2824,15 @@ Class.prototype.decodeBytecode = function(code) {
                 i += 2;
                 break;
             case op_ldc:
-                ins = [op_ldc, this.constant_pool[code.charCodeAt(i+1)]];
+                ins = [op_ldc, cp[code.charCodeAt(i+1)]];
                 i += 1;
                 break;
             case op_ldc_w:
-                ins = [op_ldc_w, this.constant_pool[u16(code, i+1)]];
+                ins = [op_ldc_w, cp[u16(code, i+1)]];
                 i += 2;
                 break;
             case op_ldc2_w:
-                ins = [op_ldc2_w, this.constant_pool[u16(code, i+1)]];
+                ins = [op_ldc2_w, cp[u16(code, i+1)]];
                 i += 2;
                 break;
             case op_iload:
@@ -3280,39 +3370,39 @@ Class.prototype.decodeBytecode = function(code) {
                 ins = [op_return];
                 break;
             case op_getstatic:
-                ins = [op_getstatic, this.constant_pool[u16(code, i+1)]];
+                ins = [op_getstatic, cp[u16(code, i+1)]];
                 i += 2;
                 break;
             case op_putstatic:
-                ins = [op_putstatic, this.constant_pool[u16(code, i+1)]];
+                ins = [op_putstatic, cp[u16(code, i+1)]];
                 i += 2;
                 break;
             case op_getfield:
-                ins = [op_getfield, this.constant_pool[u16(code, i+1)]];
+                ins = [op_getfield, cp[u16(code, i+1)]];
                 i += 2;
                 break;
             case op_putfield:
-                ins = [op_putfield, this.constant_pool[u16(code, i+1)]];
+                ins = [op_putfield, cp[u16(code, i+1)]];
                 i += 2;
                 break;
             case op_invokevirtual:
-                ins = [op_invokevirtual, this.constant_pool[u16(code, i+1)]];
+                ins = [op_invokevirtual, cp[u16(code, i+1)]];
                 i += 2;
                 break;
             case op_invokespecial:
-                ins = [op_invokespecial, this.constant_pool[u16(code, i+1)]];
+                ins = [op_invokespecial, cp[u16(code, i+1)]];
                 i += 2;
                 break;
             case op_invokestatic:
-                ins = [op_invokestatic, this.constant_pool[u16(code, i+1)]];
+                ins = [op_invokestatic, cp[u16(code, i+1)]];
                 i += 2;
                 break;
             case op_invokeinterface:
-                ins = [op_invokeinterface, this.constant_pool[u16(code, i+1)]];
+                ins = [op_invokeinterface, cp[u16(code, i+1)]];
                 i += 4;
                 break;
             case op_new:
-                ins = [op_new, this.constant_pool[u16(code, i+1)]];
+                ins = [op_new, cp[u16(code, i+1)]];
                 i += 2;
                 break;
             case op_newarray:
@@ -3320,7 +3410,7 @@ Class.prototype.decodeBytecode = function(code) {
                 i += 1;
                 break;
             case op_anewarray:
-                ins = [op_anewarray, this.constant_pool[u16(code, i+1)]];
+                ins = [op_anewarray, cp[u16(code, i+1)]];
                 i += 2;
                 break;
             case op_arraylength:
@@ -3330,11 +3420,11 @@ Class.prototype.decodeBytecode = function(code) {
                 ins = [op_athrow];
                 break;
             case op_checkcast:
-                ins = [op_checkcast, this.constant_pool[u16(code, i+1)]];
+                ins = [op_checkcast, cp[u16(code, i+1)]];
                 i += 2;
                 break;
             case op_instanceof:
-                ins = [op_instanceof, this.constant_pool[u16(code, i+1)]];
+                ins = [op_instanceof, cp[u16(code, i+1)]];
                 i += 2;
                 break;
             case op_monitorenter:
@@ -3345,7 +3435,7 @@ Class.prototype.decodeBytecode = function(code) {
                 break;
             //case op_wide:
             case op_multianewarray:
-                ins = [op_multianewarray, this.constant_pool[u16(code, i+1)], code.charCodeAt(i+3)];
+                ins = [op_multianewarray, cp[u16(code, i+1)], code.charCodeAt(i+3)];
                 i += 3;
                 break;
             case op_ifnull:
@@ -3396,59 +3486,49 @@ Class.prototype.instanceOf = function(cls) {
     for (var i = 0; i < this.interfaces_count; i++) {
         var iface = this.interfaces[i];
         while (true) {
-            if (cls === this.classloader.getClass(iface.name)) {
+            if (cls === iface) {
                 return true;
             }
             if (!iface.super_class) {
                 break;
             }
-            iface = this.classloader.getClass(iface.super_class.name);
+            iface = iface.super_class;
         }
     }
     if (this.super_class) {
-        return this.classloader.getClass(this.super_class.name).instanceOf(cls);
+        return this.super_class.instanceOf(cls);
     }
     return false;
 }
 
 Class.prototype.dump = function() {
-    print("magic:", this.magic);
-    print("minor_version:", this.minor_version);
-    print("major_version:", this.major_version);
-    print("constant_pool_count:", this.constant_pool_count);
-    for (var i = 1; i < this.constant_pool_count; i++) {
-        print("  " + i, this.constant_pool[i]);
-    }
-    print("access_flags:", this.access_flags);
-    print("this_class:", this.this_class);
+    this.classfile.dump();
+    print("name:", this.name);
     print("super_class:", this.super_class);
-    print("interfaces_count:", this.interfaces_count);
-    for (var i = 0; i < this.interfaces_count; i++) {
-        print("  " + i, this.interfaces[i]);
+    print("interfaces:");
+    for (var i = 0; i < this.interfaces.length; i++) {
+        print("  ", this.interfaces[i]);
     }
-    print("fields_count:", this.fields_count);
-    for (var i = 0; i < this.fields_count; i++) {
-        this.fields[i].dump();
+    print("fields:");
+    for (var i = 0; i < this.fields.length; i++) {
+        print("  ", this.fields[i]);
     }
-    print("methods_count:", this.methods_count);
-    for (var i = 0; i < this.methods_count; i++) {
-        this.methods[i].dump();
-    }
-    print("attributes_count:", this.attributes_count);
-    for (var i = 0; i < this.attributes_count; i++) {
-        this.attributes[i].dump();
+    print("methods:");
+    for (var i = 0; i < this.methods.length; i++) {
+        print("  ", this.methods[i]);
     }
 }
 
 Class.prototype.newInstance = function() {
     var cls = this;
+    this.initialise();
     return new function() {
         if (DEBUG_NEW_INSTANCE) {
-            print("newInstance", cls.this_class.name);
+            print("newInstance", cls.name);
         }
         this.__jvm_class = cls;
         for (var c = cls; c != null; c = c.super_class ? cls.classloader.getClass(c.super_class.name) : null) {
-            for (var i = 0; i < c.fields_count; i++) {
+            for (var i = 0; i < c.fields.length; i++) {
                 var f = c.fields[i];
                 if ((f.access_flags & ACC_STATIC) == 0) {
                     this[f.name] = defaultValue(f.descriptor);
@@ -3459,7 +3539,8 @@ Class.prototype.newInstance = function() {
 }
 
 Class.prototype.toString = function() {
-    return "<Class " + this.this_class + ">";
+    var name = this.name ? this.name : (this.classfile.constant_pool[this.classfile.this_class].name + " (not linked)");
+    return "<Class " + name + ">";
 }
 
 function JArray(type, size, def) {
@@ -3505,36 +3586,10 @@ function JArray(type, size, def) {
     }
 }
 
-function java_lang_System() {
-    this.err = null;
-    this["in"] = null;
-    this.out = null;
-}
-
-function SystemClassLoader() {
-    this.classes = [];
-
-    this.getClass = function(name) {
-        var c = this.classes[name];
-        if (c !== undefined) {
-            return c;
-        }
-        switch (name) {
-            case "java/lang/System": c = new java_lang_System(); break;
-            default:
-                throw ("Unknown system class: " + name);
-        }
-        if (c !== undefined) {
-            this.classes[name] = c;
-        }
-        return c;
-    }
-}
-
-function FileClassLoader(parent) {
+function FileClassLoader() {
     defineClass("FileLoader");
-    this.parent = parent;
     this.classes = [];
+    this.nest = 0;
 
     this.getClass = function(name) {
         var c = this.classes[name];
@@ -3542,20 +3597,26 @@ function FileClassLoader(parent) {
             return c;
         }
         if (DEBUG_LOAD_CLASS) {
-            print("Loading", name);
+            print(indent(this.nest*2) + "Loading", name);
+            this.nest += 1;
         }
-        var f;
-        try {
-            f = new FileLoader(name + ".class");
-        } catch (e) {
-            return this.parent.getClass(name);
-        }
+        var f = new FileLoader(name + ".class");
         c = new Class(this, f.readAll());
+        f.close();
         this.classes[name] = c;
+        ClassesToLink.push(c);
+        while (ClassesToLink.length > 0) {
+            var t = ClassesToLink.pop();
+            t.loadSuperclasses();
+            t.link();
+        }
         if (name === "java/lang/String") {
             JString = c;
         }
-        c.staticInit();
+        if (DEBUG_LOAD_CLASS) {
+            print(indent(this.nest*2) + "Loaded", c.name);
+            this.nest -= 1;
+        }
         return c;
     }
 }
@@ -3632,7 +3693,7 @@ function ConsolePrintStream() {
 function startMethod(env, cls, method, methodtype, obj, args, argcats) {
     if (DEBUG_METHOD_CALLS) {
         var countdepth = function(d, e) { return e ? countdepth(d+1, e.parent) : d; }
-        //print("startMethod", countdepth(0, env), cls.this_class.name, method, dump(obj), dump(args));
+        //print("startMethod", countdepth(0, env), cls.name, method, dump(obj), dump(args));
         var indent = "";
         for (var i = countdepth(0, env); i > 0; i--) indent += "  ";
         var aa = [];
@@ -3645,18 +3706,18 @@ function startMethod(env, cls, method, methodtype, obj, args, argcats) {
                 aa.push(args[i].toString());
             }
         }
-        print(indent, "startMethod", cls.this_class.name, method, "(" + aa.join(", ") + ")");
+        print(indent, "startMethod", cls.name, method, "(" + aa.join(", ") + ")");
     }
 
     var objcls = obj && methodtype == 0 ? obj.__jvm_class : cls;
     if (objcls === undefined) {
         throw ("objclass undefined, obj: " + dump(obj));
     }
-    var m = objcls.method_by_name[method];
+    var m = objcls.methods[method].thunk;
     if (m) {
         return m(env, cls, methodtype, obj, args, argcats);
     } else {
-        throw ("Undefined method: " + method + "; obj: " + dump(obj) + " methods: " + dump(objcls.method_by_name));
+        throw ("Undefined method: " + method + "; obj: " + dump(obj) + " methods: " + dump(objcls.methods));
     }
 }
 
@@ -3676,7 +3737,7 @@ function step(env) {
         if (DEBUG_TRACE_DISASSEMBLE) {
             var r = "trace";
             for (var e = env; e != null; e = e.parent) {
-                r += " " + e.cls.this_class.name + "." + e.method.name;
+                r += " " + e.cls.name + "." + e.method.name;
             }
             print(r);
             disassemble1(pc, code[pc]);
@@ -3707,17 +3768,23 @@ function runMethod(env, cls, method, methodtype, obj, args, argcats) {
     }
 }
 
-var scl = new SystemClassLoader();
-var fcl = new FileClassLoader(scl);
-fcl.getClass("java/lang/String");
-var jltg = fcl.getClass("java/lang/ThreadGroup");
-var tg = jltg.newInstance();
-runMethod(null, jltg, "<init>()V", 0, tg, [], []);
-var jlt = fcl.getClass("java/lang/Thread");
-CurrentThread = jlt.newInstance();
-runMethod(null, jlt, "<init>(Ljava/lang/ThreadGroup;Ljava/lang/String;)V", 0, CurrentThread, [tg, null], [1, 1]);
-var jls = fcl.getClass("java/lang/System").newInstance();
-jls.out = new ConsolePrintStream();
-var c = fcl.getClass(arguments[0]);
-//c.dump();
-runMethod(null, c, "main([Ljava/lang/String;)V", ACC_STATIC, null, [], []);
+try {
+    var fcl = new FileClassLoader();
+    fcl.getClass("java/lang/String");
+    var jltg = fcl.getClass("java/lang/ThreadGroup");
+    var tg = jltg.newInstance();
+    runMethod(null, jltg, "<init>()V", 0, tg, [], []);
+    var jlt = fcl.getClass("java/lang/Thread");
+    CurrentThread = jlt.newInstance();
+    runMethod(null, jlt, "<init>(Ljava/lang/ThreadGroup;Ljava/lang/String;)V", 0, CurrentThread, [tg, null], [1, 1]);
+    var jls = fcl.getClass("java/lang/System").newInstance();
+    jls.out = new ConsolePrintStream();
+    var c = fcl.getClass(arguments[0]);
+    //c.dump();
+    runMethod(null, c, "main([Ljava/lang/String;)V", ACC_STATIC, null, [], []);
+} catch (e) {
+    if (e.rhinoException) {
+        e.rhinoException.printStackTrace();
+    }
+    print(e);
+}
