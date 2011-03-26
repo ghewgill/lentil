@@ -586,6 +586,8 @@ function x32(x) {
 }
 
 function x64(x) {
+    return x;
+    // TODO: need real 64-bit integer implementation
     if (x & 0x8000000000000000) {
         return -0x8000000000000000 + (x & 0x7fffffffffffffff);
     } else {
