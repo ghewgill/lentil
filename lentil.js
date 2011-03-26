@@ -3649,8 +3649,10 @@ function JArray(type, size, def) {
     }
 }
 
-function FileClassLoader() {
+function FileClassLoader(classpath) {
     defineClass("FileLoader");
+    this.classpath = classpath;
+    this.classpath.unshift(".");
     this.classes = [];
     this.nest = 0;
 
@@ -3709,7 +3711,18 @@ function FileClassLoader() {
         if (DEBUG_LOAD_CLASS) {
             print("loadClass", name);
         }
-        var f = new FileLoader(name + ".class");
+        var f;
+        for (var i = 0; i < this.classpath.length; i++) {
+            try {
+                f = new FileLoader(this.classpath[i] + "/" + name + ".class");
+                break;
+            } catch (e) {
+                // next
+            }
+        }
+        if (f === undefined) {
+            throw ("Could not find class " + name);
+        }
         var c = new Class(this, f.readAll());
         f.close();
         if (JClass === undefined) {
@@ -3871,8 +3884,31 @@ function runMethod(env, cls, method, methodtype, obj, args, argcats) {
     }
 }
 
+var Classpath = ["."];
+var StartClass;
+var Args = [];
+
+var a = 0;
+while (a < arguments.length) {
+    if (arguments[a].charAt(0) === "-") {
+        switch (arguments[a]) {
+            case "-cp":
+                a++;
+                Classpath = arguments[a].split(":");
+                break;
+            default:
+                throw ("Unknown option: " + arguments[a]);
+        }
+    } else {
+        StartClass = arguments[a];
+        Args = arguments.slice(a+1);
+        break;
+    }
+    a++;
+}
+
 try {
-    var fcl = new FileClassLoader();
+    var fcl = new FileClassLoader(Classpath);
     fcl.bootstrap();
     fcl.getClass("java/lang/String");
     var jltg = fcl.getClass("java/lang/ThreadGroup");
@@ -3883,7 +3919,7 @@ try {
     runMethod(null, jlt, "<init>(Ljava/lang/ThreadGroup;Ljava/lang/String;)V", 0, CurrentThread, [tg, null], [1, 1]);
     var jls = fcl.getClass("java/lang/System").newInstance();
     jls.out = new ConsolePrintStream();
-    var c = fcl.getClass(arguments[0]);
+    var c = fcl.getClass(StartClass);
     //c.dump();
     runMethod(null, c, "main([Ljava/lang/String;)V", ACC_STATIC, null, [], []);
 } catch (e) {
