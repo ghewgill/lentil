@@ -878,6 +878,20 @@ function ExceptionTableEntry(cls, din) {
     }
 }
 
+function LineNumberTableEntry(cls, din) {
+    this.start_pc = din.readUnsignedShort();
+    this.line_number = din.readUnsignedShort();
+
+    this.fixup = function(pc_to_index) {
+        this.start_pc = pc_to_index[this.start_pc];
+    }
+
+    this.dump = function() {
+        print("      start_pc:", this.start_pc);
+        print("      line_number:", this.line_number);
+    }
+}
+
 var AttributeDecoder = {
     "Code": function(cls, din) {
         this.cls = cls;
@@ -892,8 +906,11 @@ var AttributeDecoder = {
         }
         this.attributes_count = din.readUnsignedShort();
         this.attributes = [];
+        this.attribute_by_name = {};
         for (var i = 0; i < this.attributes_count; i++) {
-            this.attributes[i] = new Attribute(cls, din);
+            var a = new Attribute(cls, din);
+            this.attributes[i] = a;
+            this.attribute_by_name[a.attribute_name] = a;
         }
 
         this.decodeBytecode = function(cp) {
@@ -1635,6 +1652,27 @@ var AttributeDecoder = {
     //"ConstantValue": function(cls, din) {
     //    print("here");
     //},
+    "LineNumberTable": function(cls, din) {
+        this.cls = cls;
+        this.line_number_table_length = din.readUnsignedShort();
+        this.line_number_table = [];
+        for (var i = 0; i < this.line_number_table_length; i++) {
+            this.line_number_table[i] = new LineNumberTableEntry(cls, din);
+        }
+
+        this.fixup = function(pc_to_index) {
+            for (var i = 0; i < this.line_number_table_length; i++) {
+                this.line_number_table[i].fixup(pc_to_index);
+            }
+        }
+
+        this.dump = function() {
+            print("    line_number_table");
+            for (var i = 0; i < this.line_number_table_length; i++) {
+                this.line_number_table[i].dump();
+            }
+        }
+    },
     "SourceFile": function(cls, din) {
         this.cls = cls;
         this.sourcefile_index = din.readUnsignedShort();
@@ -3126,22 +3164,30 @@ Opcode = [
     // op_athrow
     function(cls, env, ins, pc) {
         var x = env.pop();
-        while (env != null) {
-            var et = env.method.attribute_by_name["Code"].attr.exception_table;
+        var e = env;
+        while (e != null) {
+            var et = e.method.attribute_by_name["Code"].attr.exception_table;
             for (var i = 0; i < et.length; i++) {
                 if (pc >= et[i].start_pc && pc < et[i].end_pc &&
                     (et[i].catch_class === null || x.__jvm_class.instanceOf(et[i].catch_class))) {
-                    env.push1(x);
-                    env.pc = et[i].handler_pc;
-                    return env;
+                    e.push1(x);
+                    e.pc = et[i].handler_pc;
+                    return e;
                 }
             }
-            env = env.parent;
-            if (env === null) {
-                print(x.__jvm_class);
+            e = e.parent;
+            if (e === null) {
+                print("uncaught exception:", x.__jvm_class);
+                var lt = env.method.attribute_by_name["Code"].attr.attribute_by_name["LineNumberTable"].attr.line_number_table;
+                for (var i = 0; i+1 < lt.length; i++) {
+                    if (pc < lt[i+1].start_pc) {
+                        print("line", lt[i].line_number);
+                        break;
+                    }
+                }
                 throw dump(x.detailMessage);
             }
-            pc = env.pc;
+            pc = e.pc;
         }
         throw ("Unhandled exception");
     },
@@ -3298,7 +3344,7 @@ function ClassFile(bytes) {
     }
     this.attributes_count = din.readUnsignedShort();
     this.attributes = [];
-    this.attribute_by_name = [];
+    this.attribute_by_name = {};
     for (var i = 0; i < this.attributes_count; i++) {
         var a = new Attribute(this, din);
         this.attributes[i] = a;
@@ -3411,6 +3457,9 @@ Class.prototype.link = function() {
                         } else {
                             e.catch_class = null;
                         }
+                    }
+                    if (a.attribute_by_name["LineNumberTable"]) {
+                        a.attribute_by_name["LineNumberTable"].attr.fixup(a.pc_to_index);
                     }
                     if (DEBUG_SHOW_DISASSEMBLY) {
                         print(that.name, m.full_name);
