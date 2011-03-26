@@ -296,6 +296,7 @@ OpcodeName = [
 ];
 
 var ClassesToLink = [];
+var JClass;
 var JString;
 var CurrentThread;
 
@@ -303,6 +304,14 @@ NativeMethod = {
     "java/lang/Object": {
         "hashCode": function(env) {
             return 1;
+        }
+    },
+    "java/lang/VMClass": {
+        "getName(Ljava/lang/Class;)Ljava/lang/String;": function(env, c) {
+            return internString(c.vmdata.name);
+        },
+        "isArray(Ljava/lang/Class;)Z": function(env, c) {
+            return c.vmdata instanceof JArray;
         }
     },
     "java/lang/VMClassLoader": {
@@ -681,7 +690,7 @@ function ConstantClass(din) {
     }
 
     this.value = function(cl) {
-        return cl.getClass(this.name);
+        return cl.getClass(this.name).jclass;
     }
 }
 
@@ -3600,25 +3609,62 @@ function FileClassLoader() {
             print(indent(this.nest*2) + "Loading", name);
             this.nest += 1;
         }
-        var f = new FileLoader(name + ".class");
-        c = new Class(this, f.readAll());
-        f.close();
-        this.classes[name] = c;
-        ClassesToLink.push(c);
+        var c = this.loadClass(name);
+        this.classes[name] = c.vmdata;
+        ClassesToLink.push(c.vmdata);
         while (ClassesToLink.length > 0) {
             var t = ClassesToLink.pop();
             t.loadSuperclasses();
             t.link();
         }
         if (name === "java/lang/String") {
-            JString = c;
+            JString = c.vmdata;
         }
         if (DEBUG_LOAD_CLASS) {
             print(indent(this.nest*2) + "Loaded", c.name);
             this.nest -= 1;
         }
-        return c;
+        return c.vmdata;
     }
+
+    this.bootstrap = function() {
+        var fcl = this;
+        var boot = function(name) {
+            if (DEBUG_LOAD_CLASS) {
+                print("bootstrap:", name);
+            }
+            var c = fcl.loadClass(name);
+            fcl.classes[name] = c;
+            c.link();
+            return c;
+        }
+        var JObject = boot("java/lang/Object");
+        boot("java/io/Serializable");
+        boot("java/lang/reflect/Type");
+        boot("java/lang/reflect/AnnotatedElement");
+        boot("java/lang/reflect/GenericDeclaration");
+        boot("java/lang/VMClass");
+        JClass = boot("java/lang/Class");
+        var class_object = JClass.newInstance();
+        runMethod(null, JClass, "<init>(Ljava/lang/Object;)V", ACC_PRIVATE, class_object, [JObject], [1]);
+        var class_class = JClass.newInstance();
+        runMethod(null, JClass, "<init>(Ljava/lang/Object;)V", ACC_PRIVATE, class_class, [JClass], [1]);
+    }
+
+    this.loadClass = function(name) {
+        if (DEBUG_LOAD_CLASS) {
+            print("loadClass", name);
+        }
+        var f = new FileLoader(name + ".class");
+        var c = new Class(this, f.readAll());
+        f.close();
+        if (JClass === undefined) {
+            return c;
+        }
+        c.jclass = JClass.newInstance();
+        runMethod(null, JClass, "<init>(Ljava/lang/Object;)V", ACC_PRIVATE, c.jclass, [c], [1]);
+        return c.jclass;
+     }
 }
 
 function Stack() {
@@ -3709,9 +3755,12 @@ function startMethod(env, cls, method, methodtype, obj, args, argcats) {
         print(indent, "startMethod", cls.name, method, "(" + aa.join(", ") + ")");
     }
 
-    var objcls = obj && methodtype == 0 ? obj.__jvm_class : cls;
+    var objcls = obj && methodtype === 0 ? obj.__jvm_class : cls;
     if (objcls === undefined) {
         throw ("objclass undefined, obj: " + dump(obj));
+    }
+    if (!objcls.methods[method]) {
+        throw ("method " + method + " undefined");
     }
     var m = objcls.methods[method].thunk;
     if (m) {
@@ -3770,6 +3819,7 @@ function runMethod(env, cls, method, methodtype, obj, args, argcats) {
 
 try {
     var fcl = new FileClassLoader();
+    fcl.bootstrap();
     fcl.getClass("java/lang/String");
     var jltg = fcl.getClass("java/lang/ThreadGroup");
     var tg = jltg.newInstance();
