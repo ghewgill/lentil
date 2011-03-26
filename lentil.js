@@ -1801,6 +1801,42 @@ function defaultValue(descriptor) {
     }
 }
 
+function throwExceptionObject(cls, env, pc, ex) {
+    var e = env;
+    while (e != null) {
+        var et = e.method.attribute_by_name["Code"].attr.exception_table;
+        for (var i = 0; i < et.length; i++) {
+            if (pc >= et[i].start_pc && pc < et[i].end_pc &&
+                (et[i].catch_class === null || ex.__jvm_class.instanceOf(et[i].catch_class))) {
+                e.push1(ex);
+                e.pc = et[i].handler_pc;
+                return e;
+            }
+        }
+        e = e.parent;
+        if (e === null) {
+            print("uncaught exception:", ex.__jvm_class);
+            var lt = env.method.attribute_by_name["Code"].attr.attribute_by_name["LineNumberTable"].attr.line_number_table;
+            for (var i = 0; i+1 < lt.length; i++) {
+                if (pc < lt[i+1].start_pc) {
+                    print("line", lt[i].line_number);
+                    break;
+                }
+            }
+            throw dump(ex.detailMessage);
+        }
+        pc = e.pc;
+    }
+    throw ("Unhandled exception");
+}
+
+function throwException(cls, env, pc, name, constructor, args, argcats) {
+    var ec = cls.classloader.getClass(name);
+    var ex = ec.newInstance();
+    runMethod(null, ec, constructor, ACC_PRIVATE, ex, args, argcats);
+    return throwExceptionObject(cls, env, pc, ex);
+}
+
 Opcode = [
     
     // op_nop
@@ -3040,6 +3076,9 @@ Opcode = [
             args[nargs] = env.pop();
         }
         var obj = env.pop();
+        if (obj === null) {
+            throwException(cls, env, pc, "java/lang/NullPointerException", "<init>()V", [], []);
+        }
         var r = startMethod(env, cls.classloader.getClass(mr.classname), mr.name_and_type.name + mr.name_and_type.descriptor, 0, obj, args, argcats);
         if (r instanceof Environment) {
             return r;
@@ -3166,32 +3205,7 @@ Opcode = [
     // op_athrow
     function(cls, env, ins, pc) {
         var x = env.pop();
-        var e = env;
-        while (e != null) {
-            var et = e.method.attribute_by_name["Code"].attr.exception_table;
-            for (var i = 0; i < et.length; i++) {
-                if (pc >= et[i].start_pc && pc < et[i].end_pc &&
-                    (et[i].catch_class === null || x.__jvm_class.instanceOf(et[i].catch_class))) {
-                    e.push1(x);
-                    e.pc = et[i].handler_pc;
-                    return e;
-                }
-            }
-            e = e.parent;
-            if (e === null) {
-                print("uncaught exception:", x.__jvm_class);
-                var lt = env.method.attribute_by_name["Code"].attr.attribute_by_name["LineNumberTable"].attr.line_number_table;
-                for (var i = 0; i+1 < lt.length; i++) {
-                    if (pc < lt[i+1].start_pc) {
-                        print("line", lt[i].line_number);
-                        break;
-                    }
-                }
-                throw dump(x.detailMessage);
-            }
-            pc = e.pc;
-        }
-        throw ("Unhandled exception");
+        return throwExceptionObject(cls, env, pc, x);
     },
     
     // op_checkcast
@@ -3864,11 +3878,14 @@ function step(env) {
             throw ("Unimplemented opcode: " + op + " " + OpcodeName[op]);
         }
         if (next instanceof Environment) {
-            env.pc = pc + 1;
+            env.pc = pc;
             env = next;
             break;
         } else if (next < 0) {
             env = env.parent;
+            if (env) {
+                env.pc++;
+            }
             break;
         } else {
             pc = next;
