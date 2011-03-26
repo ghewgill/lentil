@@ -3927,4 +3927,5 @@ try {
         e.rhinoException.printStackTrace();
     }
     print(e);
+    java.lang.System.exit(1);
 }
