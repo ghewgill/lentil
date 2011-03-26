@@ -307,11 +307,17 @@ NativeMethod = {
         }
     },
     "java/lang/VMClass": {
+        "getClassLoader(Ljava/lang/Class;)Ljava/lang/ClassLoader;": function(env, c) {
+            return null; // TODO
+        },
         "getName(Ljava/lang/Class;)Ljava/lang/String;": function(env, c) {
             return internString(c.vmdata.name);
         },
         "isArray(Ljava/lang/Class;)Z": function(env, c) {
             return c.vmdata instanceof JArray;
+        },
+        "isPrimitive(Ljava/lang/Class;)Z": function(env, c) {
+            return false; // TODO
         }
     },
     "java/lang/VMClassLoader": {
