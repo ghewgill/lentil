@@ -3054,6 +3054,9 @@ Opcode = [
     function(cls, env, ins, pc) {
         var fr = ins[1];
         var obj = env.pop();
+        if (obj === null) {
+            return throwException(cls, env, pc, "java/lang/NullPointerException", "<init>()V", [], []);
+        }
         // TODO: cat2 field
         env.push1(obj[fr.name_and_type.name]);
         return pc + 1;
@@ -3064,6 +3067,9 @@ Opcode = [
         var fr = ins[1];
         var x = env.pop();
         var obj = env.pop();
+        if (obj === null) {
+            return throwException(cls, env, pc, "java/lang/NullPointerException", "<init>()V", [], []);
+        }
         obj[fr.name_and_type.name] = x;
         return pc + 1;
     },
@@ -3080,7 +3086,7 @@ Opcode = [
         }
         var obj = env.pop();
         if (obj === null) {
-            throwException(cls, env, pc, "java/lang/NullPointerException", "<init>()V", [], []);
+            return throwException(cls, env, pc, "java/lang/NullPointerException", "<init>()V", [], []);
         }
         var r = startMethod(env, cls.classloader.getClass(mr.classname), mr.name_and_type.name + mr.name_and_type.descriptor, 0, obj, args, argcats);
         if (r instanceof Environment) {
@@ -3108,6 +3114,9 @@ Opcode = [
             args[nargs] = env.pop();
         }
         var obj = env.pop();
+        if (obj === null) {
+            return throwException(cls, env, pc, "java/lang/NullPointerException", "<init>()V", [], []);
+        }
         var r = startMethod(env, cls.classloader.getClass(mr.classname), mr.name_and_type.name + mr.name_and_type.descriptor, ACC_PRIVATE, obj, args, argcats);
         if (r instanceof Environment) {
             return r;
