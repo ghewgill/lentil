@@ -340,7 +340,7 @@ NativeMethod = {
             return r;
         },
         "getClass(Ljava/lang/Object;)Ljava/lang/Class;": function(env, obj) {
-            return obj.__jvm_class;
+            return obj.__jvm_class.jclass;
         }
     },
     "java/lang/VMSystem": {
@@ -3694,7 +3694,7 @@ function FileClassLoader(classpath) {
             JString = c.vmdata;
         }
         if (DEBUG_LOAD_CLASS) {
-            print(indent(this.nest*2) + "Loaded", c.name);
+            print(indent(this.nest*2) + "Loaded", c.vmdata.name);
             this.nest -= 1;
         }
         return c.vmdata;
