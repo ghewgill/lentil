@@ -3438,6 +3438,9 @@ Class.prototype.loadSuperclasses = function() {
 
 Class.prototype.link = function() {
     this.name = this.classfile.constant_pool[this.classfile.this_class].name;
+    if (DEBUG_LOAD_CLASS) {
+        print("Linking ", this.name);
+    }
     this.super_class = this.classfile.super_class ? this.classloader.getClass(this.classfile.constant_pool[this.classfile.super_class].name) : null;
 
     this.interfaces = [];
