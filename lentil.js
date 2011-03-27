@@ -316,6 +316,9 @@ NativeMethod = {
         "isArray(Ljava/lang/Class;)Z": function(env, c) {
             return c.vmdata instanceof JArray;
         },
+        "isInterface(Ljava/lang/Class;)Z": function(env, c) {
+            return (c.vmdata.access_flags & ACC_INTERFACE) != 0;
+        },
         "isPrimitive(Ljava/lang/Class;)Z": function(env, c) {
             return false; // TODO
         }
