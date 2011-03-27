@@ -379,7 +379,7 @@ NativeMethod = {
     },
     "java/lang/VMThrowable": {
         "fillInStackTrace(Ljava/lang/Throwable;)Ljava/lang/VMThrowable;": function(env, t) {
-            return null;
+            return t;
         }
     },
     "gnu/classpath/VMSystemProperties": {
