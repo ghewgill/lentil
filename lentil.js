@@ -3732,8 +3732,10 @@ function FileClassLoader(classpath) {
         JClass = boot("java/lang/Class");
         var class_object = JClass.newInstance();
         runMethod(null, JClass, "<init>(Ljava/lang/Object;)V", ACC_PRIVATE, class_object, [JObject], [1]);
+        this.classes["java/lang/Object"].jclass = class_object;
         var class_class = JClass.newInstance();
         runMethod(null, JClass, "<init>(Ljava/lang/Object;)V", ACC_PRIVATE, class_class, [JClass], [1]);
+        this.classes["java/lang/Class"].jclass = class_class;
     }
 
     this.loadClass = function(name) {
