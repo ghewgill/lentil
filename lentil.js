@@ -301,12 +301,24 @@ var JString;
 var CurrentThread;
 
 NativeMethod = {
+    "java/io/VMFile": {
+        "isDirectory(Ljava/lang/String;)Z": function(env, d) {
+            return false;
+        }
+    },
     "java/lang/Object": {
         "hashCode": function(env) {
             return 1;
         }
     },
     "java/lang/VMClass": {
+        "forName(Ljava/lang/String;ZLjava/lang/ClassLoader;)Ljava/lang/Class;": function(env, name, initialize, classloader) {
+            var c = env.cls.classloader.getClass(name.s);
+            if (c === null) {
+                return null;
+            }
+            return c.jclass;
+        },
         "getClassLoader(Ljava/lang/Class;)Ljava/lang/ClassLoader;": function(env, c) {
             return null; // TODO
         },
@@ -329,6 +341,9 @@ NativeMethod = {
         },
         "getPrimitiveClass(C)Ljava/lang/Class;": function(env, c) {
             return {"primitive_class": c};
+        },
+        "getSystemClassLoader()Ljava/lang/ClassLoader;": function(env) {
+            return null;
         }
     },
     "java/lang/VMObject": {
