@@ -313,7 +313,7 @@ NativeMethod = {
     },
     "java/lang/VMClass": {
         "forName(Ljava/lang/String;ZLjava/lang/ClassLoader;)Ljava/lang/Class;": function(env, name, initialize, classloader) {
-            var c = env.cls.classloader.getClass(name.s);
+            var c = env.cls.classloader.getInternalClass(name.s);
             if (c === null) {
                 return null;
             }
@@ -431,7 +431,7 @@ NativeMethod = {
                 "gnu.cpu.endian"                : "little"
             };
             for (var k in sp) {
-                runMethod(null, p.__jvm_class, "setProperty(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/Object;", 0, p, [internString(k), internString(sp[k])], [1, 1]);
+                loop(startMethod(null, p.__jvm_class, "setProperty(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/Object;", 0, p, [internString(k), internString(sp[k])], [1, 1]));
             }
         }
     },
@@ -716,7 +716,7 @@ function ConstantClass(din) {
     }
 
     this.value = function(cl) {
-        return cl.getClass(this.name).jclass;
+        return cl.getInternalClass(this.name).jclass;
     }
 }
 
@@ -1849,10 +1849,13 @@ function throwExceptionObject(cls, env, pc, ex) {
 }
 
 function throwException(cls, env, pc, name, constructor, args, argcats) {
-    var ec = cls.classloader.getClass(name);
-    var ex = ec.newInstance();
-    runMethod(null, ec, constructor, ACC_PRIVATE, ex, args, argcats);
-    return throwExceptionObject(cls, env, pc, ex);
+    var ec = cls.classloader.getInternalClass(name);
+    return ec.initialise(env, function() {
+        var ex = ec.newInstance();
+        return startMethod(env, ec, constructor, ACC_PRIVATE, ex, args, argcats, function() {
+            return throwExceptionObject(cls, env, pc, ex);
+        });
+    });
 }
 
 Opcode = [
@@ -3051,18 +3054,22 @@ Opcode = [
     // op_getstatic
     function(cls, env, ins, pc) {
         var fr = ins[1];
-        var c = cls.classloader.getClass(fr.classname);
-        // TODO: cat2 field
-        env.push1(c.getStatic(fr.name_and_type.name));
-        return pc + 1;
+        var c = cls.classloader.getInternalClass(fr.classname);
+        return c.initialise(env, function() {
+            // TODO: cat2 field
+            env.push1(c.getStatic(fr.name_and_type.name));
+            return pc + 1;
+        });
     },
     
     // op_putstatic
     function(cls, env, ins, pc) {
         var fr = ins[1];
-        var c = cls.classloader.getClass(fr.classname);
-        c.putStatic(fr.name_and_type.name, env.pop());
-        return pc + 1;
+        var c = cls.classloader.getInternalClass(fr.classname);
+        return c.initialise(env, function() {
+            c.putStatic(fr.name_and_type.name, env.pop());
+            return pc + 1;
+        });
     },
     
     // op_getfield
@@ -3103,7 +3110,9 @@ Opcode = [
         if (obj === null) {
             return throwException(cls, env, pc, "java/lang/NullPointerException", "<init>()V", [], []);
         }
-        var r = startMethod(env, cls.classloader.getClass(mr.classname), mr.name_and_type.name + mr.name_and_type.descriptor, 0, obj, args, argcats);
+        var r = startMethod(env, cls.classloader.getInternalClass(mr.classname), mr.name_and_type.name + mr.name_and_type.descriptor, 0, obj, args, argcats, function() {
+            return pc + 1;
+        });
         if (r instanceof Environment) {
             return r;
         }
@@ -3132,7 +3141,9 @@ Opcode = [
         if (obj === null) {
             return throwException(cls, env, pc, "java/lang/NullPointerException", "<init>()V", [], []);
         }
-        var r = startMethod(env, cls.classloader.getClass(mr.classname), mr.name_and_type.name + mr.name_and_type.descriptor, ACC_PRIVATE, obj, args, argcats);
+        var r = startMethod(env, cls.classloader.getInternalClass(mr.classname), mr.name_and_type.name + mr.name_and_type.descriptor, ACC_PRIVATE, obj, args, argcats, function() {
+            return pc + 1;
+        });
         if (r instanceof Environment) {
             return r;
         }
@@ -3157,21 +3168,24 @@ Opcode = [
             argcats[nargs] = env.topcat();
             args[nargs] = env.pop();
         }
-        var c = cls.classloader.getClass(mr.classname);
-        c.initialise();
-        var r = startMethod(env, c, mr.name_and_type.name + mr.name_and_type.descriptor, ACC_STATIC, null, args, argcats);
-        if (r instanceof Environment) {
-            return r;
-        }
-        if (mr.name_and_type.descriptor.charAt(mr.name_and_type.descriptor.length - 1) != "V") {
-            if (mr.name_and_type.descriptor.charAt(mr.name_and_type.descriptor.length - 1) == "D"
-             || mr.name_and_type.descriptor.charAt(mr.name_and_type.descriptor.length - 1) == "J") {
-                env.push2(r);
-            } else {
-                env.push1(r);
+        var c = cls.classloader.getInternalClass(mr.classname);
+        return c.initialise(env, function() {
+            var r = startMethod(env, c, mr.name_and_type.name + mr.name_and_type.descriptor, ACC_STATIC, null, args, argcats, function() {
+                return pc + 1;
+            });
+            if (r instanceof Environment) {
+                return r;
             }
-        }
-        return pc + 1;
+            if (mr.name_and_type.descriptor.charAt(mr.name_and_type.descriptor.length - 1) != "V") {
+                if (mr.name_and_type.descriptor.charAt(mr.name_and_type.descriptor.length - 1) == "D"
+                 || mr.name_and_type.descriptor.charAt(mr.name_and_type.descriptor.length - 1) == "J") {
+                    env.push2(r);
+                } else {
+                    env.push1(r);
+                }
+            }
+            return pc + 1;
+        });
     },
     
     // op_invokeinterface
@@ -3185,7 +3199,9 @@ Opcode = [
             args[nargs] = env.pop();
         }
         var obj = env.pop();
-        var r = startMethod(env, cls.classloader.getClass(mr.classname), mr.name_and_type.name + mr.name_and_type.descriptor, 0, obj, args, argcats);
+        var r = startMethod(env, cls.classloader.getInternalClass(mr.classname), mr.name_and_type.name + mr.name_and_type.descriptor, 0, obj, args, argcats, function() {
+            return pc + 1;
+        });
         if (r instanceof Environment) {
             return r;
         }
@@ -3206,9 +3222,11 @@ Opcode = [
     
     // op_new
     function(cls, env, ins, pc) {
-        var c = cls.classloader.getClass(ins[1].name);
-        env.push1(c.newInstance());
-        return pc + 1;
+        var c = cls.classloader.getInternalClass(ins[1].name);
+        return c.initialise(env, function() {
+            env.push1(c.newInstance());
+            return pc + 1;
+        });
     },
     
     // op_newarray
@@ -3440,47 +3458,45 @@ function Class(classloader, bytes) {
     //this.classfile.dump();
 }
 
-Class.prototype.loadSuperclasses = function() {
+Class.prototype.link = function() {
     var cf = this.classfile;
     var cp = cf.constant_pool;
     if (cf.super_class) {
-        this.classloader.getClass(cp[cf.super_class].name);
+        this.classloader.getOrLoadClass(cp[cf.super_class].name);
     }
     for (var i = 0; i < cf.interfaces.length; i++) {
-        this.classloader.getClass(cp[cf.interfaces[i]].name);
+        this.classloader.getOrLoadClass(cp[cf.interfaces[i]].name);
     }
-}
 
-Class.prototype.link = function() {
-    this.name = this.classfile.constant_pool[this.classfile.this_class].name;
+    this.name = cp[cf.this_class].name;
     if (DEBUG_LOAD_CLASS) {
         print("Linking ", this.name);
     }
-    this.super_class = this.classfile.super_class ? this.classloader.getClass(this.classfile.constant_pool[this.classfile.super_class].name) : null;
+    this.super_class = cf.super_class ? this.classloader.getOrLoadClass(cp[cf.super_class].name) : null;
 
     this.interfaces = [];
-    for (var i = 0; i < this.classfile.interfaces_count; i++) {
-        this.interfaces[i] = this.classloader.getClass(this.classfile.constant_pool[this.classfile.interfaces[i]].name);
+    for (var i = 0; i < cf.interfaces_count; i++) {
+        this.interfaces[i] = this.classloader.getOrLoadClass(cp[cf.interfaces[i]].name);
     }
 
     this.fields = [];
-    for (var i = 0; i < this.classfile.fields_count; i++) {
+    for (var i = 0; i < cf.fields_count; i++) {
         this.fields[i] = {
-            "name": this.classfile.constant_pool[this.classfile.fields[i].name_index].value(),
-            "descriptor": this.classfile.constant_pool[this.classfile.fields[i].descriptor_index].value(),
-            "access_flags": this.classfile.fields[i].access_flags
+            "name": cp[cf.fields[i].name_index].value(),
+            "descriptor": cp[cf.fields[i].descriptor_index].value(),
+            "access_flags": cf.fields[i].access_flags
         };
     }
 
     this.methods = {};
-    for (var i = 0; i < this.classfile.methods_count; i++) {
+    for (var i = 0; i < cf.methods_count; i++) {
         (function(that, m) {
             var fn;
             if (NativeMethod[that.name]) {
                 fn = NativeMethod[that.name][m.full_name];
             }
             if (fn) {
-                that.methods[m.full_name] = {"thunk": function(env, cls, methodtype, obj, args, argcats) {
+                that.methods[m.full_name] = {"thunk": function(env, cls, methodtype, obj, args, argcats, nextfunc) {
                     var jsargs = [env];
                     for (var i = 0; i < args.length; i++) {
                         if (args[i] && args[i].__jvm_class && args[i].__jvm_class.name === "java/lang/String") {
@@ -3492,14 +3508,14 @@ Class.prototype.link = function() {
                     return fn.apply(obj, jsargs);
                 }};
             } else if (!(m.access_flags & ACC_NATIVE)) {
-                that.methods[m.full_name] = {"thunk": function(env, cls, methodtype, obj, args, argcats) {
+                that.methods[m.full_name] = {"thunk": function(env, cls, methodtype, obj, args, argcats, nextfunc) {
                     var a = m.attribute_by_name["Code"].attr;
                     a.decodeBytecode(that.classfile.constant_pool);
                     for (var i = 0; i < a.exception_table_length; i++) {
                         var e = a.exception_table[i];
                         e.fixup(a.pc_to_index);
                         if (e.catch_type > 0) {
-                            e.catch_class = that.classloader.getClass(that.classfile.constant_pool[e.catch_type].name);
+                            e.catch_class = that.classloader.getOrLoadClass(that.classfile.constant_pool[e.catch_type].name);
                         } else {
                             e.catch_class = null;
                         }
@@ -3511,18 +3527,18 @@ Class.prototype.link = function() {
                         print(that.name, m.full_name);
                         disassemble(a.code);
                     }
-                    var newf = function(env, cls, methodtype, obj, args, argcats) {
-                        return new Environment(env, cls, m, methodtype, obj, args, argcats);
+                    var newf = function(env, cls, methodtype, obj, args, argcats, nextfunc) {
+                        return new Environment(env, cls, m, methodtype, obj, args, argcats, nextfunc);
                     };
                     that.methods[m.full_name].thunk = newf;
-                    return newf(env, cls, methodtype, obj, args, argcats);
+                    return newf(env, cls, methodtype, obj, args, argcats, nextfunc);
                 }};
             } else {
-                that.methods[m.full_name] = {"thunk": function(env, cls, methodtype, obj, args, argcats) {
+                that.methods[m.full_name] = {"thunk": function(env, cls, methodtype, obj, args, argcats, nextfunc) {
                     throw ("Native method not supplied: " + that.name + " " + m.full_name);
                 }};
             }
-        })(this, this.classfile.methods[i]);
+        })(this, cf.methods[i]);
     }
 
     var c = this.super_class;
@@ -3546,23 +3562,34 @@ Class.prototype.link = function() {
 
 }
 
-Class.prototype.initialise = function() {
-    if (!this.initialised) {
-        if (this.super_class) {
-            this.super_class.initialise();
-        }
-        this.initialised = true;
-        if (this.methods["<clinit>()V"]) {
-            runMethod(null, this, "<clinit>()V", ACC_STATIC, null, [], []);
+Class.prototype.initialise = function(env, nextfunc) {
+    if (this.initialised) {
+        return nextfunc();
+    }
+    var cls = this;
+    var dothis = function() {
+        cls.initialised = true;
+        if (cls.methods["<clinit>()V"]) {
+            return startMethod(env, cls, "<clinit>()V", ACC_STATIC, null, [], [], function() {
+                if (DEBUG_LOAD_CLASS) {
+                    print("Initialised", cls.name);
+                }
+                return nextfunc();
+            });
         }
         if (DEBUG_LOAD_CLASS) {
-            print("Initialised", this.name);
+            print("Initialised", cls.name);
         }
+        return nextfunc();
+    };
+    if (this.super_class) {
+        return this.super_class.initialise(env, dothis);
+    } else {
+        return dothis();
     }
 }
 
 Class.prototype.getStatic = function(name) {
-    this.initialise();
     for (var c = this; c != null; c = c.super_class) {
         if (name in c.statics) {
             return c.statics[name];
@@ -3572,7 +3599,6 @@ Class.prototype.getStatic = function(name) {
 }
 
 Class.prototype.putStatic = function(name, value) {
-    this.initialise();
     for (var c = this; c != null; c = c.super_class) {
         if (name in c.statics) {
             c.statics[name] = value;
@@ -3628,13 +3654,12 @@ Class.prototype.dump = function() {
 
 Class.prototype.newInstance = function() {
     var cls = this;
-    this.initialise();
     return new function() {
         if (DEBUG_NEW_INSTANCE) {
             print("newInstance", cls.name);
         }
         this.__jvm_class = cls;
-        for (var c = cls; c != null; c = c.super_class ? cls.classloader.getClass(c.super_class.name) : null) {
+        for (var c = cls; c != null; c = c.super_class ? cls.classloader.getInternalClass(c.super_class.name) : null) {
             for (var i = 0; i < c.fields.length; i++) {
                 var f = c.fields[i];
                 if ((f.access_flags & ACC_STATIC) == 0) {
@@ -3697,10 +3722,19 @@ function FileClassLoader(classpath) {
     defineClass("FileLoader");
     this.classpath = classpath;
     this.classpath.unshift(".");
-    this.classes = [];
+    this.classes = {};
     this.nest = 0;
 
-    this.getClass = function(name) {
+    this.getInternalClass = function(name) {
+        var c = this.classes[name];
+        if (c === undefined) {
+            //throw ("getInternalClass: unknown " + name);
+            return this.getOrLoadClass(name);
+        }
+        return c;
+    }
+
+    this.getOrLoadClass = function(name) {
         var c = this.classes[name];
         if (c !== undefined) {
             return c;
@@ -3709,12 +3743,11 @@ function FileClassLoader(classpath) {
             print(indent(this.nest*2) + "Loading", name);
             this.nest += 1;
         }
-        var c = this.loadClass(name);
+        var c = this.loadClassObject(name);
         this.classes[name] = c.vmdata;
         ClassesToLink.push(c.vmdata);
         while (ClassesToLink.length > 0) {
             var t = ClassesToLink.pop();
-            t.loadSuperclasses();
             t.link();
         }
         if (name === "java/lang/String") {
@@ -3733,7 +3766,7 @@ function FileClassLoader(classpath) {
             if (DEBUG_LOAD_CLASS) {
                 print("bootstrap:", name);
             }
-            var c = fcl.loadClass(name);
+            var c = fcl.loadClassObject(name);
             fcl.classes[name] = c;
             c.link();
             return c;
@@ -3746,16 +3779,16 @@ function FileClassLoader(classpath) {
         boot("java/lang/VMClass");
         JClass = boot("java/lang/Class");
         var class_object = JClass.newInstance();
-        runMethod(null, JClass, "<init>(Ljava/lang/Object;)V", ACC_PRIVATE, class_object, [JObject], [1]);
+        loop(startMethod(null, JClass, "<init>(Ljava/lang/Object;)V", ACC_PRIVATE, class_object, [JObject], [1]));
         this.classes["java/lang/Object"].jclass = class_object;
         var class_class = JClass.newInstance();
-        runMethod(null, JClass, "<init>(Ljava/lang/Object;)V", ACC_PRIVATE, class_class, [JClass], [1]);
+        loop(startMethod(null, JClass, "<init>(Ljava/lang/Object;)V", ACC_PRIVATE, class_class, [JClass], [1]));
         this.classes["java/lang/Class"].jclass = class_class;
     }
 
-    this.loadClass = function(name) {
+    this.loadClassObject = function(name) {
         if (DEBUG_LOAD_CLASS) {
-            print("loadClass", name);
+            print("loadClassObject", name);
         }
         var f;
         for (var i = 0; i < this.classpath.length; i++) {
@@ -3775,7 +3808,12 @@ function FileClassLoader(classpath) {
             return c;
         }
         c.jclass = JClass.newInstance();
-        runMethod(null, JClass, "<init>(Ljava/lang/Object;)V", ACC_PRIVATE, c.jclass, [c], [1]);
+
+        // Instead of calling the Java code for the java.lang.Class constructor,
+        // do the same thing here in native code (it's just one private field assignment)
+        //loop(startMethod(null, JClass, "<init>(Ljava/lang/Object;)V", ACC_PRIVATE, c.jclass, [c], [1]));
+        c.jclass.vmdata = c;
+
         return c.jclass;
      }
 }
@@ -3811,13 +3849,15 @@ function Stack() {
     }
 }
 
-function Environment(parent, cls, method, methodtype, obj, args, argcats) {
+function Environment(parent, cls, method, methodtype, obj, args, argcats, nextfunc) {
     this.parent = parent;
     this.thread = CurrentThread;
     this.cls = cls;
     this.method = method;
+    this.code = method.attribute_by_name["Code"].attr.code;
     this.obj = obj;
     this.args = args;
+    this.nextfunc = nextfunc;
     this.stack = parent ? parent.stack : new Stack();
     this.local = [];
     this.pc = 0;
@@ -3849,7 +3889,7 @@ function ConsolePrintStream() {
     }
 }
 
-function startMethod(env, cls, method, methodtype, obj, args, argcats) {
+function startMethod(env, cls, method, methodtype, obj, args, argcats, nextfunc) {
     if (DEBUG_METHOD_CALLS) {
         var countdepth = function(d, e) { return e ? countdepth(d+1, e.parent) : d; }
         //print("startMethod", countdepth(0, env), cls.name, method, dump(obj), dump(args));
@@ -3877,60 +3917,56 @@ function startMethod(env, cls, method, methodtype, obj, args, argcats) {
     }
     var m = objcls.methods[method].thunk;
     if (m) {
-        return m(env, cls, methodtype, obj, args, argcats);
+        return m(env, cls, methodtype, obj, args, argcats, nextfunc);
     } else {
         throw ("Undefined method: " + method + "; obj: " + dump(obj) + " methods: " + dump(objcls.methods));
     }
 }
 
-function step(env) {
-    var code = env.method.attribute_by_name["Code"].attr.code;
-    var pc = env.pc;
-    while (true) {
+function loop(env) {
+    while (env) {
+        var pc = env.pc;
         if (DEBUG_TRACE_STACK) {
             var st = "stack: ";
             for (var i = 0; i < env.stack.index; i++) {
-                st += env.stack.stack[i] + ", ";
+                var v = env.stack.stack[i];
+                st += ((v && v.__jvm_class === JString && v.value) ? "\""+v.value.s+"\"" : v) + ", ";
             }
             print(st);
         }
-        var op = code[pc][0];
-
         if (DEBUG_TRACE_DISASSEMBLE) {
-            var r = "trace";
+            var r = "trace:";
             for (var e = env; e != null; e = e.parent) {
                 r += " " + e.cls.name + "." + e.method.name;
             }
             print(r);
-            disassemble1(pc, code[pc]);
+            disassemble1(pc, env.code[pc]);
         }
 
-        var next = Opcode[op](env.cls, env, code[pc], pc);
+        var op = env.code[pc][0];
+        var next = Opcode[op](env.cls, env, env.code[pc], pc);
         if (next === undefined) {
             throw ("Unimplemented opcode: " + op + " " + OpcodeName[op]);
         }
-        if (next instanceof Environment) {
-            env.pc = pc;
-            env = next;
-            break;
-        } else if (next < 0) {
+        while (!(next instanceof Environment) && next < 0) {
+            var e = env;
             env = env.parent;
-            if (env) {
-                env.pc++;
+            if (env === null) {
+                return env;
             }
-            break;
+            if (e.nextfunc === undefined) {
+                print("no nextfunc");
+                return;
+            }
+            next = e.nextfunc();
+        }
+        if (next instanceof Environment) {
+            env = next;
         } else {
-            pc = next;
+            env.pc = next;
         }
     }
     return env;
-}
-
-function runMethod(env, cls, method, methodtype, obj, args, argcats) {
-    var e = startMethod(env, cls, method, methodtype, obj, args, argcats);
-    while (e !== env) {
-        e = step(e);
-    }
 }
 
 var Classpath = ["."];
@@ -3958,19 +3994,20 @@ while (a < arguments.length) {
 
 try {
     var fcl = new FileClassLoader(Classpath);
-    fcl.bootstrap();
-    fcl.getClass("java/lang/String");
-    var jltg = fcl.getClass("java/lang/ThreadGroup");
+    var e = fcl.bootstrap();
+    fcl.getOrLoadClass("java/lang/String");
+    var jltg = fcl.getOrLoadClass("java/lang/ThreadGroup");
     var tg = jltg.newInstance();
-    runMethod(null, jltg, "<init>()V", 0, tg, [], []);
-    var jlt = fcl.getClass("java/lang/Thread");
+    loop(startMethod(null, jltg, "<init>()V", 0, tg, [], []));
+    var jlt = fcl.getOrLoadClass("java/lang/Thread");
     CurrentThread = jlt.newInstance();
-    runMethod(null, jlt, "<init>(Ljava/lang/ThreadGroup;Ljava/lang/String;)V", 0, CurrentThread, [tg, internString("main")], [1, 1]);
-    var jls = fcl.getClass("java/lang/System").newInstance();
+    loop(startMethod(null, jlt, "<init>(Ljava/lang/ThreadGroup;Ljava/lang/String;)V", 0, CurrentThread, [tg, internString("main")], [1, 1]));
+    var jls = fcl.getOrLoadClass("java/lang/System").newInstance();
+    loop(startMethod(null, jls.__jvm_class, "<init>()V", 0, jls, [], []));
     jls.out = new ConsolePrintStream();
-    var c = fcl.getClass(StartClass);
+    var c = fcl.getOrLoadClass(StartClass);
     //c.dump();
-    runMethod(null, c, "main([Ljava/lang/String;)V", ACC_STATIC, null, [], []);
+    loop(startMethod(null, c, "main([Ljava/lang/String;)V", ACC_STATIC, null, [], []));
 } catch (e) {
     if (e.rhinoException) {
         e.rhinoException.printStackTrace();
