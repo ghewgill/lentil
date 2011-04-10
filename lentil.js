@@ -300,6 +300,13 @@ var JClass;
 var JString;
 var CurrentThread;
 
+function JException(name, constructor, args, argcats) {
+    this.name = name;
+    this.constructor = constructor;
+    this.args = args;
+    this.argcats = argcats;
+}
+
 NativeMethod = {
     "java/io/VMFile": {
         "isDirectory(Ljava/lang/String;)Z": function(env, d) {
@@ -315,7 +322,7 @@ NativeMethod = {
         "forName(Ljava/lang/String;ZLjava/lang/ClassLoader;)Ljava/lang/Class;": function(env, name, initialize, classloader) {
             var c = env.cls.classloader.getInternalClass(name.s);
             if (c === null) {
-                return null;
+                throw new JException("java/lang/ClassNotFoundException", "<init>()V", [], []);
             }
             return c.jclass;
         },
@@ -3505,7 +3512,11 @@ Class.prototype.link = function() {
                             jsargs.push(args[i]);
                         }
                     }
-                    return fn.apply(obj, jsargs);
+                    try {
+                        return fn.apply(obj, jsargs);
+                    } catch (e if e instanceof JException) {
+                        return throwException(cls, env, env.pc, e.name, e.constructor, e.args, e.argcats);
+                    }
                 }};
             } else if (!(m.access_flags & ACC_NATIVE)) {
                 that.methods[m.full_name] = {"thunk": function(env, cls, methodtype, obj, args, argcats, nextfunc) {
@@ -3744,6 +3755,9 @@ function FileClassLoader(classpath) {
             this.nest += 1;
         }
         var c = this.loadClassObject(name);
+        if (c === null) {
+            return null;
+        }
         this.classes[name] = c.vmdata;
         ClassesToLink.push(c.vmdata);
         while (ClassesToLink.length > 0) {
@@ -3800,7 +3814,7 @@ function FileClassLoader(classpath) {
             }
         }
         if (f === undefined) {
-            throw ("Could not find class " + name);
+            return null;
         }
         var c = new Class(this, f.readAll());
         f.close();
