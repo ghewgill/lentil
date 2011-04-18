@@ -3456,6 +3456,25 @@ function ClassFile(bytes) {
     }
 }
 
+function makeArrayClassBytes(name) {
+    return "\xca\xfe\xba\xbe" // magic
+        + "\x00\x00" // minor_version
+        + "\x00\x31" // major_version
+        + "\x00\x05" // constant_pool_count
+        + "\x01" + "\x00\x11java/lang/Object;" // 1 java/lang/Object
+        + "\x01" + "\x00" + String.fromCharCode(name.length) + name // 2 {name}
+        + "\x07" + "\x00\x01" // 3 class:java/lang/Object
+        + "\x07" + "\x00\x02" // 4 class:{name}
+        + "\x00\x00" // access_flags
+        + "\x00\x04" // this_class
+        + "\x00\x03" // super_class
+        + "\x00\x00" // interfaces_count
+        + "\x00\x00" // fields_count
+        + "\x00\x00" // methods_count
+        + "\x00\x00" // attributes_count
+    ;
+}
+
 function Class(classloader, bytes) {
     this.__jvm_class = this;
     this.classloader = classloader;
@@ -3804,20 +3823,25 @@ function FileClassLoader(classpath) {
         if (DEBUG_LOAD_CLASS) {
             print("loadClassObject", name);
         }
-        var f;
-        for (var i = 0; i < this.classpath.length; i++) {
-            try {
-                f = new FileLoader(this.classpath[i] + "/" + name + ".class");
-                break;
-            } catch (e) {
-                // next
+        var c;
+        if (name.substr(0, 1) === "[") {
+            c = new Class(this, makeArrayClassBytes(name.substr(1)));
+        } else {
+            var f;
+            for (var i = 0; i < this.classpath.length; i++) {
+                try {
+                    f = new FileLoader(this.classpath[i] + "/" + name + ".class");
+                    break;
+                } catch (e) {
+                    // next
+                }
             }
+            if (f === undefined) {
+                return null;
+            }
+            c = new Class(this, f.readAll());
+            f.close();
         }
-        if (f === undefined) {
-            return null;
-        }
-        var c = new Class(this, f.readAll());
-        f.close();
         if (JClass === undefined) {
             return c;
         }
